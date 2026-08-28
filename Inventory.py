@@ -4,7 +4,7 @@ import os
 
 # Set exact wide layout matching the 1200x750 desktop panel size
 st.set_page_config(page_title="Laserax Inventory Manager", layout="wide")
-st.title("🏭 Laserax Local Excel Inventory Manager (Online Cloud Portal)")
+st.title("🏭 Laserax GmbH Inventory Manager")
 
 # --- CONFIGURATION: Link to your shared OneDrive Sheet ---
 # Paste the direct download link to the inventory.xlsx hosted in your shared OneDrive here
