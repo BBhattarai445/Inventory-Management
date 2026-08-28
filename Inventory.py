@@ -8,7 +8,7 @@ st.title("🏭 Laserax GmbH Inventory Manager")
 
 # --- CONFIGURATION: Link to your shared OneDrive Sheet ---
 # Paste the direct download link to the inventory.xlsx hosted in your shared OneDrive here
-ONEDRIVE_FILE_URL = r"https://laseraxinc-my.sharepoint.com/:x:/g/personal/bbhattarai_laserax_com/IQDlpeWcuGCsTKPotwyxsN8fAZVN6H-adOr3sQTjHeCWd5w?e=gpybkY&download=1"
+ONEDRIVE_FILE_URL = r"https://laseraxinc-my.sharepoint.com/:x:/g/personal/bbhattarai_laserax_com/IQDlpeWcuGCsTKPotwyxsN8fAZVN6H-adOr3sQTjHeCWd5w?e=gpybkY"
 
 # Columns mapped exactly to your Excel image headers
 COLUMNS = ["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"]
