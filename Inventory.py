@@ -6,13 +6,13 @@ import requests
 
 # Set layout boundaries matching your previous manager tool styling
 st.set_page_config(page_title="Laserax Inventory Manager", layout="wide")
-st.title("🏭 Laserax Inventory Manager ")
+st.title("🏭 Laserax Local Excel Inventory Manager (Online Cloud Portal)")
 
 # ==============================================================================
 # --- CONFIGURATION: OneDrive Connections ---
 # ==============================================================================
 # Paste your modified Direct OneDrive link here for downloading data
-ONEDRIVE_FILE_URL = "https://laseraxinc-my.sharepoint.com/:x:/g/personal/bbhattarai_laserax_com/IQDlpeWcuGCsTKPotwyxsN8fAZVN6H-adOr3sQTjHeCWd5w?rtime=c07oCEQH30g_&download=1"
+ONEDRIVE_FILE_URL = r"https://laseraxinc-my.sharepoint.com/:x:/g/personal/bbhattarai_laserax_com/IQDlpeWcuGCsTKPotwyxsN8fAZVN6H-adOr3sQTjHeCWd5w?rtime=c07oCEQH30g_&download=1"
 
 COLUMNS = ["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"]
 
@@ -36,13 +36,13 @@ def upload_to_onedrive(dataframe):
         headers = {"Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"}
         response = requests.put(upload_url, data=buffer.getvalue(), headers=headers)
         
-        if response.status_code in:
+        # FIXED LINE: Properly checks for successful response status codes
+        if response.status_code in [200, 201]:
             st.toast("☁️ Cloud Spreadsheet synced successfully across all team members!", icon="✅")
         else:
             st.sidebar.warning(f"App running in session view. Verify corporate upload link rules (Status: {response.status_code}).")
     except Exception as e:
         st.sidebar.error(f"Sync issue: {e}")
-
 
 # Cache helper to fetch data entries dynamically from your OneDrive share link
 if "inventory_df" not in st.session_state:
@@ -195,3 +195,4 @@ if len(df) > 0:
             st.rerun()
 else:
     st.info("Database table matrix is currently completely blank.")
+
