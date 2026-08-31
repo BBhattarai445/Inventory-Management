@@ -60,7 +60,7 @@ def save_to_github(dataframe):
         }
         put_res = requests.put(API_URL, headers=headers, json=data)
         
-        if put_res.status_code == 200 or put_res.status_code == 201:
+        if put_res.status_code in [200, 201]:
             st.toast("☁️ Repository inventory synced and locked live on GitHub successfully!", icon="✅")
         else:
             st.error(f"GitHub rejected save execution. Status code: {put_res.status_code}")
@@ -70,30 +70,32 @@ def save_to_github(dataframe):
 # Load live records directly from your repository file block
 if "inventory_df" not in st.session_state or st.sidebar.button("🔄 Sync Live GitHub Data"):
     try:
-        # Build strict token headers so GitHub opens access to private or locked enterprise repositories
-        headers = {}
+        headers = {
+            "Accept": "application/vnd.github.v3+json"
+        }
         if GITHUB_TOKEN:
             headers["Authorization"] = f"token {GITHUB_TOKEN}"
-            headers["Accept"] = "application/vnd.github.v3.raw"  # Force GitHub to stream the pure binary file data directly
         
-        # 1. Fetch file directly via the API with raw content stream headers (Safest way for private repos)
-        raw_res = requests.get(API_URL, headers=headers)
-        if raw_res.status_code == 200:
-            st.session_state.inventory_df = pd.read_excel(io.BytesIO(raw_res.content), engine="openpyxl")
-            st.session_state.inventory_df.columns = st.session_state.inventory_df.columns.str.strip()
-        else:
-            # 2. Fallback secondary download method using the raw token system if API endpoint is jammed
-            headers_fallback = {}
-            if GITHUB_TOKEN:
-                headers_fallback["Authorization"] = f"token {GITHUB_TOKEN}"
-            fallback_res = requests.get(RAW_URL, headers=headers_fallback)
-            
-            if fallback_res.status_code == 200:
-                st.session_state.inventory_df = pd.read_excel(io.BytesIO(fallback_res.content), engine="openpyxl")
+        # 1. Fetch file object wrapper metadata from the API
+        res = requests.get(API_URL, headers=headers)
+        if res.status_code == 200:
+            json_data = res.json()
+            if isinstance(json_data, dict) and "content" in json_data:
+                # 2. Clean out metadata newline wrappers safely
+                raw_base64_str = json_data["content"].replace("\n", "").replace("\r", "").strip()
+                
+                # 3. Force base64 decoding back to pure binary stream block
+                file_data = base64.b64decode(raw_base64_str)
+                
+                # 4. Read Excel using openpyxl engine
+                st.session_state.inventory_df = pd.read_excel(io.BytesIO(file_data), engine="openpyxl")
                 st.session_state.inventory_df.columns = st.session_state.inventory_df.columns.str.strip()
             else:
-                st.error(f"Could not open spreadsheet data file. Verify your GITHUB_TOKEN or check if the file is named exactly '{FILE_PATH}'. (Status Code: {raw_res.status_code})")
+                st.error("GitHub API returned data, but it did not contain file content.")
                 st.session_state.inventory_df = pd.DataFrame(columns=["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"])
+        else:
+            st.error(f"Could not open spreadsheet data file. HTTP Status: {res.status_code}. Verify your GITHUB_TOKEN or check if the file is named exactly '{FILE_PATH}'.")
+            st.session_state.inventory_df = pd.DataFrame(columns=["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"])
     except Exception as e:
         st.error(f"Could not parse repository file. Details: {e}")
         st.session_state.inventory_df = pd.DataFrame(columns=["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"])
@@ -172,36 +174,41 @@ if len(df) > 0:
     select_options = [f"Row {row['S.No']}: {row['EQUIPMENT']}" for _, row in df.iterrows()]
     selected_option = st.selectbox("Choose tracking row record to modify or delete:", select_options)
     
-    selected_sno = int(selected_option.split(": ")[row_idx] if ": " in selected_option else selected_option.split(":"))
-    row_idx = df[df["S.No"] == selected_sno].index
-    current_row = df.loc[row_idx].iloc
-    
-    edit_row1_col1, edit_row1_col2, edit_row1_col3 = st.columns(3)
-    edit_row2_col1, edit_row2_col2, edit_row2_col3 = st.columns(3)
-    
-    with edit_row1_col1:
-        edit_eq = st.text_input("Equipment Name:", value=str(current_row["EQUIPMENT"]))
-    with edit_row1_col2:
-        edit_proj = st.text_input("Project No - Part NO:", value=str(current_row["LASERAX PROJECT No. - Part NO"]))
-    with edit_row1_col3:
-        edit_stock = st.number_input("Current Stock Unit Value:", min_value=0, step=1, value=int(current_row["STOCK"]))
+    # Grab row number cleanly
+    try:
+        selected_sno = int(selected_option.split(": ")[0].replace("Row ", "").strip())
+        row_idx = df[df["S.No"] == selected_sno].index[0]
+        current_row = df.loc[row_idx]
+    except Exception as e:
+        st.error(f"Selection indexing error: {e}")
+        row_idx = None
         
-    with edit_row2_col1:
-        edit_loc = st.text_input("Storage Location Field:", value=str(current_row["LOCATION"]))
-    with edit_row2_col2:
-        edit_rem = st.text_input("Remarks Logs:", value=str(current_row["REMARKS"]))
-    with edit_row2_col3:
-        edit_link = st.text_input("Procurement System URL:", value=str(current_row["PROCUREMENT LINK"]))
+    if row_idx is not None:
+        edit_row1_col1, edit_row1_col2, edit_row1_col3 = st.columns(3)
+        edit_row2_col1, edit_row2_col2, edit_row2_col3 = st.columns(3)
         
-    action_col1, action_col2, action_col3, action_col4 = st.columns(4)
-    
-    with action_col1:
-        if st.button("➕ Increase Stock (+1)", use_container_width=True):
-            st.session_state.inventory_df.at[row_idx, "STOCK"] += 1
-            save_to_github(st.session_state.inventory_df)
-            st.rerun()
+        with edit_row1_col1:
+            edit_eq = st.text_input("Equipment Name:", value=str(current_row["EQUIPMENT"]))
+        with edit_row1_col2:
+            edit_proj = st.text_input("Project No - Part NO:", value=str(current_row["LASERAX PROJECT No. - Part NO"]))
+        with edit_row1_col3:
+            edit_stock = st.number_input("Current Stock Unit Value:", min_value=0, step=1, value=int(current_row["STOCK"]))
             
-    with action_col2:
-        if st.button("➖ Decrease Stock (-1)", use_container_width=True):
-            current_qty = st.session_state.inventory_df.at[row_idx, "STOCK"]
-            st.session_state.inventory_df.at[row_idx, "STOCK"] = max(0, current_qty - 1)
+        with edit_row2_col1:
+            edit_loc = st.text_input("Storage Location Field:", value=str(current_row["LOCATION"]))
+        with edit_row2_col2:
+            edit_rem = st.text_input("Remarks Logs:", value=str(current_row["REMARKS"]))
+        with edit_row2_col3:
+            edit_link = st.text_input("Procurement System URL:", value=str(current_row["PROCUREMENT LINK"]))
+            
+        action_col1, action_col2, action_col3, action_col4 = st.columns(4)
+        
+        with action_col1:
+            if st.button("➕ Increase Stock (+1)", use_container_width=True):
+                st.session_state.inventory_df.at[row_idx, "STOCK"] += 1
+                save_to_github(st.session_state.inventory_df)
+                st.rerun()
+                
+        with action_col2:
+            if st.button("➖ Decrease Stock (-1)", use_container_width=True):
+                current_qty = st.session_state.inventory_df.at[row_idx, "STOCK"]
