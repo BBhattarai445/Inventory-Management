@@ -29,7 +29,7 @@ def upload_to_onedrive(dataframe):
         buffer.seek(0)
         
         # --- CLOUD SAVE LINK LOGIC ---
-        # If your share link permits modifications, we can convert download hooks to write hooks
+        # Convert download hooks to write hooks
         upload_url = ONEDRIVE_FILE_URL.replace("&download=1", "&action=upload")
         
         # Silently dispatch updated rows to cloud folder structures
@@ -39,10 +39,10 @@ def upload_to_onedrive(dataframe):
         if response.status_code in:
             st.toast("☁️ Cloud Spreadsheet synced successfully across all team members!", icon="✅")
         else:
-            # Fallback tracking if authorization tokens are missing on enterprise files
-            st.sidebar.warning("App running in session view. Verify corporate upload link rules.")
+            st.sidebar.warning(f"App running in session view. Verify corporate upload link rules (Status: {response.status_code}).")
     except Exception as e:
         st.sidebar.error(f"Sync issue: {e}")
+
 
 # Cache helper to fetch data entries dynamically from your OneDrive share link
 if "inventory_df" not in st.session_state:
