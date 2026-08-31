@@ -21,31 +21,6 @@ GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
 API_URL = f"https://github.com/BBhattarai445/Inventory-Management/blob/main/Inventory.xlsx"
 RAW_URL = f"https://github.com/BBhattarai445/Inventory-Management/blob/main/Inventory.xlsx"
 
-def fetch_excel_from_github():
-    possible_filenames = ["Inventory.xlsx", "inventory.xlsx", "Inventory.XLSX", "inventory.XLSX"]
-    
-    for filename in possible_filenames:
-        api_url = f"https://github.com{GITHUB_USER}/{GITHUB_REPO}/contents/{filename}"
-        headers = {"Accept": "application/vnd.github.v3+json"}
-        if GITHUB_TOKEN:
-            headers["Authorization"] = f"token {GITHUB_TOKEN}"
-            
-        res = requests.get(api_url, headers=headers)
-        if res.status_code == 200:
-            json_data = res.json()
-            if isinstance(json_data, dict) and "content" in json_data:
-                # Store successful file path references for saving actions later
-                st.session_state.active_file_path = filename
-                st.session_state.active_api_url = api_url
-                
-                # Decode and compile binary stream block cleanly
-                raw_base64_str = json_data["content"].replace("\n", "").replace("\r", "").strip()
-                file_data = base64.b64decode(raw_base64_str)
-                return pd.read_excel(io.BytesIO(file_data), engine="openpyxl")
-                
-    # If all options return 404 text pages instead of binary datasets
-    return None
-
 def save_to_github(dataframe):
     """
     Automated Save Engine: Commits the updated Excel spreadsheet directly 
@@ -55,8 +30,6 @@ def save_to_github(dataframe):
         st.error("Missing 'GITHUB_TOKEN' secret in your Streamlit dashboard settings.")
         return
 
-    active_url = st.session_state.get("active_api_url", f"https://github.com{GITHUB_USER}/{GITHUB_REPO}/contents/Inventory.xlsx")
-
     try:
         # 1. Convert the current data to an Excel binary block
         buffer = io.BytesIO()
@@ -65,12 +38,12 @@ def save_to_github(dataframe):
         buffer.seek(0)
         content_encoded = base64.b64encode(buffer.getvalue()).decode()
 
-        # 2. Get the file's current version (SHA hash) to allow overwriting
+        # 2. Get the file's current cloud ID version (SHA hash) to allow overwriting
         headers = {
             "Authorization": f"token {GITHUB_TOKEN}", 
             "Accept": "application/vnd.github.v3+json"
         }
-        get_res = requests.get(active_url, headers=headers)
+        get_res = requests.get(API_URL, headers=headers)
         
         sha = ""
         if get_res.status_code == 200:
@@ -85,7 +58,7 @@ def save_to_github(dataframe):
             "content": content_encoded,
             "sha": sha
         }
-        put_res = requests.put(active_url, headers=headers, json=data)
+        put_res = requests.put(API_URL, headers=headers, json=data)
         
         if put_res.status_code == 200 or put_res.status_code == 201:
             st.toast("☁️ Repository inventory synced and locked live on GitHub successfully!", icon="✅")
@@ -96,16 +69,37 @@ def save_to_github(dataframe):
 
 # Load live records directly from your repository file block
 if "inventory_df" not in st.session_state or st.sidebar.button("🔄 Sync Live GitHub Data"):
-    with st.spinner("Connecting to repository database..."):
-        loaded_df = fetch_excel_from_github()
+    try:
+        headers = {
+            "Accept": "application/vnd.github.v3+json"
+        }
+        if GITHUB_TOKEN:
+            headers["Authorization"] = f"token {GITHUB_TOKEN}"
         
-        if loaded_df is not None:
-            st.session_state.inventory_df = loaded_df
-            st.session_state.inventory_df.columns = st.session_state.inventory_df.columns.str.strip()
+        # 1. Fetch file object wrapper metadata from the API
+        res = requests.get(API_URL, headers=headers)
+        if res.status_code == 200:
+            json_data = res.json()
+            if isinstance(json_data, dict) and "content" in json_data:
+                # 2. Clean out metadata newline wrappers safely
+                raw_base64_str = json_data["content"].replace("\n", "").replace("\r", "").strip()
+                
+                # 3. Force base64 decoding back to pure binary stream block
+                file_data = base64.b64decode(raw_base64_str)
+                
+                # 4. Read Excel using openpyxl engine
+                st.session_state.inventory_df = pd.read_excel(io.BytesIO(file_data), engine="openpyxl")
+                st.session_state.inventory_df.columns = st.session_state.inventory_df.columns.str.strip()
+            else:
+                st.error("GitHub API returned data, but it did not contain file content.")
+                st.session_state.inventory_df = pd.DataFrame(columns=["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"])
         else:
-            st.error("Could not find or open your Excel file on GitHub.")
-            st.info(f"Verify: 1. Is your file explicitly uploaded to the repository '{GITHUB_REPO}'? 2. Is your GITHUB_TOKEN added to Secrets?")
+            st.error(f"Could not open spreadsheet data file. HTTP Status: {res.status_code}.")
+            st.info("Verify your GITHUB_TOKEN or check your repository file name spelling.")
             st.session_state.inventory_df = pd.DataFrame(columns=["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"])
+    except Exception as e:
+        st.error(f"Could not parse repository file. Details: {e}")
+        st.session_state.inventory_df = pd.DataFrame(columns=["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"])
 
 if "S.No" not in st.session_state.inventory_df.columns:
     st.session_state.inventory_df.insert(0, "S.No", range(1, len(st.session_state.inventory_df) + 1))
@@ -182,9 +176,9 @@ if len(df) > 0:
     selected_option = st.selectbox("Choose tracking row record to modify or delete:", select_options)
     
     try:
-        # Isolate the starting row tracking segment safely
-        prefix = selected_option.split(":")[0]
-        selected_sno = int(prefix.replace("Row ", "").strip())
+        # FIXED LINE: Safely isolates row text structures cleanly before string casting operations
+        clean_option_str = str(selected_option).replace("Row ", "")
+        selected_sno = int(clean_option_str.split(":")[0].strip())
         
         row_idx = df[df["S.No"] == selected_sno].index
         current_row = df.loc[row_idx].iloc[0]
@@ -217,5 +211,3 @@ if len(df) > 0:
                 st.session_state.inventory_df.at[row_idx[0], "STOCK"] += 1
                 save_to_github(st.session_state.inventory_df)
                 st.rerun()
-                
-        with action_col2:
