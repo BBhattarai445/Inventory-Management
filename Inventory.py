@@ -893,4 +893,3 @@ st.caption(
 st.caption(
     f"Total inventory records: {len(st.session_state.inventory_df)}"
 )
-```
