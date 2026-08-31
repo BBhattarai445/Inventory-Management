@@ -31,7 +31,7 @@ def save_to_github(dataframe):
         return
 
     try:
-        # 1. Convert the current layout data to an Excel binary block
+        # 1. Convert the current data to an Excel binary block
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             dataframe.to_excel(writer, index=False)
@@ -39,7 +39,10 @@ def save_to_github(dataframe):
         content_encoded = base64.b64encode(buffer.getvalue()).decode()
 
         # 2. Get the file's current cloud ID version (SHA hash) to allow overwriting
-        headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
+        headers = {
+            "Authorization": f"token {GITHUB_TOKEN}", 
+            "Accept": "application/vnd.github.v3+json"
+        }
         get_res = requests.get(API_URL, headers=headers)
         
         sha = ""
@@ -57,7 +60,6 @@ def save_to_github(dataframe):
         }
         put_res = requests.put(API_URL, headers=headers, json=data)
         
-        # Validates successful creation or update
         if put_res.status_code == 200 or put_res.status_code == 201:
             st.toast("☁️ Repository inventory synced and locked live on GitHub successfully!", icon="✅")
         else:
@@ -68,29 +70,29 @@ def save_to_github(dataframe):
 # Load live records directly from your repository file block
 if "inventory_df" not in st.session_state or st.sidebar.button("🔄 Sync Live GitHub Data"):
     try:
+        # Build strict token headers so GitHub opens access to private or locked enterprise repositories
         headers = {}
         if GITHUB_TOKEN:
             headers["Authorization"] = f"token {GITHUB_TOKEN}"
+            headers["Accept"] = "application/vnd.github.v3.raw"  # Force GitHub to stream the pure binary file data directly
         
-        # FIRST STEP: Try reading directly via the un-capped RAW url download link 
-        raw_res = requests.get(RAW_URL, headers=headers)
+        # 1. Fetch file directly via the API with raw content stream headers (Safest way for private repos)
+        raw_res = requests.get(API_URL, headers=headers)
         if raw_res.status_code == 200:
             st.session_state.inventory_df = pd.read_excel(io.BytesIO(raw_res.content), engine="openpyxl")
             st.session_state.inventory_df.columns = st.session_state.inventory_df.columns.str.strip()
         else:
-            # SECOND STEP (FALLBACK): Try API fetching if raw content hits an access block
-            res = requests.get(API_URL, headers=headers)
-            if res.status_code == 200:
-                json_data = res.json()
-                if isinstance(json_data, dict) and "content" in json_data:
-                    raw_base64_str = json_data["content"].replace("\n", "").replace("\r", "").strip()
-                    file_data = base64.b64decode(raw_base64_str)
-                    st.session_state.inventory_df = pd.read_excel(io.BytesIO(file_data), engine="openpyxl")
-                    st.session_state.inventory_df.columns = st.session_state.inventory_df.columns.str.strip()
-                else:
-                    raise ValueError("API response structural error.")
+            # 2. Fallback secondary download method using the raw token system if API endpoint is jammed
+            headers_fallback = {}
+            if GITHUB_TOKEN:
+                headers_fallback["Authorization"] = f"token {GITHUB_TOKEN}"
+            fallback_res = requests.get(RAW_URL, headers=headers_fallback)
+            
+            if fallback_res.status_code == 200:
+                st.session_state.inventory_df = pd.read_excel(io.BytesIO(fallback_res.content), engine="openpyxl")
+                st.session_state.inventory_df.columns = st.session_state.inventory_df.columns.str.strip()
             else:
-                st.error(f"Could not download file. Raw URL status: {raw_res.status_code}, API status: {res.status_code}")
+                st.error(f"Could not open spreadsheet data file. Verify your GITHUB_TOKEN or check if the file is named exactly '{FILE_PATH}'. (Status Code: {raw_res.status_code})")
                 st.session_state.inventory_df = pd.DataFrame(columns=["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"])
     except Exception as e:
         st.error(f"Could not parse repository file. Details: {e}")
@@ -170,9 +172,9 @@ if len(df) > 0:
     select_options = [f"Row {row['S.No']}: {row['EQUIPMENT']}" for _, row in df.iterrows()]
     selected_option = st.selectbox("Choose tracking row record to modify or delete:", select_options)
     
-    selected_sno = int(selected_option.split(": ")[1].replace("Row ", "") if ": " in selected_option else selected_option.split(":")[0].replace("Row ", ""))
+    selected_sno = int(selected_option.split(": ")[row_idx] if ": " in selected_option else selected_option.split(":"))
     row_idx = df[df["S.No"] == selected_sno].index
-    current_row = df.loc[row_idx].iloc[0]
+    current_row = df.loc[row_idx].iloc
     
     edit_row1_col1, edit_row1_col2, edit_row1_col3 = st.columns(3)
     edit_row2_col1, edit_row2_col2, edit_row2_col3 = st.columns(3)
@@ -195,11 +197,11 @@ if len(df) > 0:
     
     with action_col1:
         if st.button("➕ Increase Stock (+1)", use_container_width=True):
-            st.session_state.inventory_df.at[row_idx[0], "STOCK"] += 1
+            st.session_state.inventory_df.at[row_idx, "STOCK"] += 1
             save_to_github(st.session_state.inventory_df)
             st.rerun()
             
     with action_col2:
         if st.button("➖ Decrease Stock (-1)", use_container_width=True):
-            current_qty = st.session_state.inventory_df.at[row_idx[0], "STOCK"]
-            st.session_state.inventory_df.at[row_idx[0], "STOCK"] = max(0, current_qty - 1)
+            current_qty = st.session_state.inventory_df.at[row_idx, "STOCK"]
+            st.session_state.inventory_df.at[row_idx, "STOCK"] = max(0, current_qty - 1)
