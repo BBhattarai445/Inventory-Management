@@ -95,7 +95,7 @@ if "inventory_df" not in st.session_state or st.sidebar.button("🔄 Sync Live G
                 st.session_state.inventory_df = pd.DataFrame(columns=["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"])
         else:
             st.error(f"Could not open spreadsheet data file. HTTP Status: {res.status_code}.")
-            st.info(f"Double-check: 1. Is your file on GitHub named exactly '{FILE_PATH}'? 2. Is your repository name exactly '{GITHUB_REPO}'? 3. Did you add GITHUB_TOKEN to Secrets?")
+            st.info("Verify your GITHUB_TOKEN or check your repository file name spelling.")
             st.session_state.inventory_df = pd.DataFrame(columns=["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"])
     except Exception as e:
         st.error(f"Could not parse repository file. Details: {e}")
@@ -176,10 +176,10 @@ if len(df) > 0:
     selected_option = st.selectbox("Choose tracking row record to modify or delete:", select_options)
     
     try:
-        if ": " in selected_option:
-            selected_sno = int(selected_option.split(": ")[0].replace("Row ", "").strip())
-        else:
-            selected_sno = int(selected_option.split(":")[0].replace("Row ", "").strip())
+        # FIXED LINE: Safely isolates row text structures cleanly before string casting operations
+        clean_option_str = str(selected_option).replace("Row ", "")
+        selected_sno = int(clean_option_str.split(":")[0].strip())
+        
         row_idx = df[df["S.No"] == selected_sno].index
         current_row = df.loc[row_idx].iloc[0]
     except Exception as e:
@@ -209,3 +209,5 @@ if len(df) > 0:
         with action_col1:
             if st.button("➕ Increase Stock (+1)", use_container_width=True):
                 st.session_state.inventory_df.at[row_idx[0], "STOCK"] += 1
+                save_to_github(st.session_state.inventory_df)
+                st.rerun()
