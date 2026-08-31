@@ -15,7 +15,7 @@ st.title("🏭 Laserax GitHub Excel Inventory Manager (Online Cloud Portal)")
 # ==============================================================================
 # ⚠️ REPLACE THESE TWO VALUES WITH YOUR ACTUAL GITHUB INFO
 GITHUB_USER = "BBhattarai445"
-GITHUB_REPO = "Inventory-Management-"
+GITHUB_REPO = "Inventory-Management"
 FILE_PATH = "Inventory.xlsx"  # Name of your Excel file inside the repo
 
 # Secure connection using your Streamlit secret token
