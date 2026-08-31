@@ -11,7 +11,7 @@ st.title("🏭 Laserax GitHub Excel Inventory Manager (Online Cloud Portal)")
 # ==============================================================================
 # --- CONFIGURATION: GitHub Repository Details ---
 # ==============================================================================
-# ⚠️ Ensure these are accurate and your file inside GitHub is named exactly 'Inventory.xlsx'
+# Ensure these are accurate and your file inside GitHub is named exactly 'Inventory.xlsx'
 GITHUB_USER = "bbhattarai445"
 GITHUB_REPO = "Inventory-Management"
 FILE_PATH = "Inventory.xlsx"  
@@ -57,8 +57,8 @@ def save_to_github(dataframe):
         }
         put_res = requests.put(API_URL, headers=headers, json=data)
         
-        # Validates successful creation (201) or update (200) from GitHub
-        if put_res.status_code in:
+        # Validates successful creation or update
+        if put_res.status_code == 200 or put_res.status_code == 201:
             st.toast("☁️ Repository inventory synced and locked live on GitHub successfully!", icon="✅")
         else:
             st.error(f"GitHub rejected save execution. Status code: {put_res.status_code}")
@@ -169,7 +169,7 @@ if len(df) > 0:
     select_options = [f"Row {row['S.No']}: {row['EQUIPMENT']}" for _, row in df.iterrows()]
     selected_option = st.selectbox("Choose tracking row record to modify or delete:", select_options)
     
-    selected_sno = int(selected_option.split(":")[0].replace("Row ", ""))
+    selected_sno = int(selected_option.split(": ")[0].replace("Row ", ""))
     row_idx = df[df["S.No"] == selected_sno].index
     current_row = df.loc[row_idx].iloc[0]
     
