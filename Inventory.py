@@ -12,9 +12,15 @@ st.title("🏭 Laserax Inventory Manager")
 # ==============================================================================
 SPREADSHEET_ID = r"https://laseraxinc-my.sharepoint.com/:x:/g/personal/bbhattarai_laserax_com/IQDlpeWcuGCsTKPotwyxsN8fAZVN6H-adOr3sQTjHeCWd5w?rtime=c07oCEQH30g"
 
-# Direct links for downloading and uploading data natively
-GOOGLE_SHEET_DOWNLOAD_URL = f"https://google.com{SPREADSHEET_ID}/export?format=xlsx"
-GOOGLE_SHEET_FORM_URL = f"https://google.com{SPREADSHEET_ID}/values"
+# ==============================================================================
+# --- CONFIGURATION: Google Sheets Connections ---
+# ==============================================================================
+# Paste your EXACT browser share link here (Make sure 'Anyone with the link can edit' is turned on!)
+SHARE_LINK = "https://google.com"
+
+# This automatically cleans the link format for Python to download it safely
+GOOGLE_SHEET_DOWNLOAD_URL = SHARE_LINK.split("/edit")[0] + "/export?format=xlsx"
+
 
 COLUMNS = ["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"]
 
