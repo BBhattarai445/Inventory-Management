@@ -6,7 +6,7 @@ import requests
 
 # Set layout boundaries matching your original desktop manager tool styling
 st.set_page_config(page_title="Laserax Inventory Manager", layout="wide")
-st.title("🏭 Laserax GitHub Excel Inventory Manager (Online Cloud Portal)")
+st.title("🏭 Laserax Inventory Manager")
 
 # ==============================================================================
 # --- CONFIGURATION: GitHub Repository Details ---
