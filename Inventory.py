@@ -18,7 +18,7 @@ FILE_PATH = r"Inventory.xlsx"
 
 # Secure connection using your Streamlit secret token
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
-API_URL = f"https://github.com{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}"
+API_URL = f"https://github.com/BBhattarai445/Inventory-Management/blob/main/Inventory.xlsx"
 RAW_URL = f"https://github.com/BBhattarai445/Inventory-Management/blob/main/Inventory.xlsx"
 
 def save_to_github(dataframe):
