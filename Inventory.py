@@ -12,14 +12,14 @@ st.title("🏭 Laserax GitHub Excel Inventory Manager (Online Cloud Portal)")
 # --- CONFIGURATION: GitHub Repository Details ---
 # ==============================================================================
 # Ensure these are accurate and your file inside GitHub is named exactly 'Inventory.xlsx'
-GITHUB_USER = "bbhattarai445"
+GITHUB_USER = "/bbhattarai445"
 GITHUB_REPO = "Inventory-Management"
 FILE_PATH = "Inventory.xlsx"  
 
 # Secure connection using your Streamlit secret token
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
 API_URL = f"https://github.com{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}"
-RAW_URL = f"https://githubusercontent.com{GITHUB_USER}/{GITHUB_REPO}/main/{FILE_PATH}"
+RAW_URL = f"https://githubusercontent.com{GITHUB_USER}/{GITHUB_REPO}/blob/{FILE_PATH}"
 
 def save_to_github(dataframe):
     """
