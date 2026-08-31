@@ -4,22 +4,21 @@ import io
 import base64
 import requests
 
-# Set layout boundaries matching your manager tool styling
+# Set layout boundaries matching your original desktop manager tool styling
 st.set_page_config(page_title="Laserax Inventory Manager", layout="wide")
 st.title("🏭 Laserax GitHub Excel Inventory Manager (Online Cloud Portal)")
 
 # ==============================================================================
 # --- CONFIGURATION: GitHub Repository Details ---
 # ==============================================================================
+# ⚠️ Ensure these are accurate and your file inside GitHub is named exactly 'Inventory.xlsx'
 GITHUB_USER = "bbhattarai445"
 GITHUB_REPO = "Inventory-Management"
-FILE_PATH = "Inventory.xlsx"  # Case-sensitive! Make sure this matches your file extension exactly (.xlsx vs .XLSX)
+FILE_PATH = "Inventory.xlsx"  
 
 # Secure connection using your Streamlit secret token
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
 API_URL = f"https://github.com{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}"
-
-# Fallback direct raw URL if the API endpoint hits structural formatting blocks
 RAW_URL = f"https://githubusercontent.com{GITHUB_USER}/{GITHUB_REPO}/main/{FILE_PATH}"
 
 def save_to_github(dataframe):
@@ -32,14 +31,14 @@ def save_to_github(dataframe):
         return
 
     try:
-        # 1. Convert the current data to an Excel binary block
+        # 1. Convert the current layout data to an Excel binary block
         buffer = io.BytesIO()
         with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
             dataframe.to_excel(writer, index=False)
         buffer.seek(0)
         content_encoded = base64.b64encode(buffer.getvalue()).decode()
 
-        # 2. Get the file's current version (SHA hash) to allow overwriting
+        # 2. Get the file's current cloud ID version (SHA hash) to allow overwriting
         headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
         get_res = requests.get(API_URL, headers=headers)
         
@@ -58,10 +57,11 @@ def save_to_github(dataframe):
         }
         put_res = requests.put(API_URL, headers=headers, json=data)
         
-        if put_res.status_code in [200, 201]:
+        # Validates successful creation (201) or update (200) from GitHub
+        if put_res.status_code in:
             st.toast("☁️ Repository inventory synced and locked live on GitHub successfully!", icon="✅")
         else:
-            st.error(f"GitHub rejected save execution. Status code: {put_res.status_code}. Response: {put_res.text}")
+            st.error(f"GitHub rejected save execution. Status code: {put_res.status_code}")
     except Exception as e:
         st.error(f"Sync issue: {e}")
 
@@ -81,16 +81,15 @@ if "inventory_df" not in st.session_state or st.sidebar.button("🔄 Sync Live G
                 st.session_state.inventory_df = pd.read_excel(io.BytesIO(file_data))
                 st.session_state.inventory_df.columns = st.session_state.inventory_df.columns.str.strip()
             else:
-                raise ValueError("API did not return a valid dictionary content block.")
+                raise ValueError("API response structural error.")
         else:
-            # FALLBACK METHOD: Try reading directly via the raw link if API gives 404 or bad structure
+            # FALLBACK METHOD: Try reading directly via the raw link if API hits a block
             raw_res = requests.get(RAW_URL, headers=headers)
             if raw_res.status_code == 200:
                 st.session_state.inventory_df = pd.read_excel(io.BytesIO(raw_res.content))
                 st.session_state.inventory_df.columns = st.session_state.inventory_df.columns.str.strip()
             else:
                 st.error(f"Could not find file on GitHub. API status: {res.status_code}, Raw URL status: {raw_res.status_code}")
-                st.info(f"Please check: Is your repository branch named 'main' or 'master'? Is the file named exactly '{FILE_PATH}'?")
                 st.session_state.inventory_df = pd.DataFrame(columns=["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"])
     except Exception as e:
         st.error(f"Could not parse repository file. Details: {e}")
@@ -141,7 +140,7 @@ with add_row1_col3:
     add_stock = st.number_input("Add Stock Count Level:", min_value=0, step=1, value=0, key="add_stock")
 
 with add_row2_col1:
-    add_loc = st.text_input("Add Warehouse Location Location:", key="add_loc")
+    add_loc = st.text_input("Add Warehouse Location:", key="add_loc")
 with add_row2_col2:
     add_rem = st.text_input("Add Item Remarks/Notes:", key="add_rem")
 with add_row2_col3:
@@ -207,5 +206,6 @@ if len(df) > 0:
             st.rerun()
             
     with action_col3:
-
-            
+        if st.button("💾 Save All Edits", use_container_width=True):
+            if edit_eq:
+                st.session_state.inventory_df.at[row_idx[0], "EQUIPMENT"] = edit_eq
