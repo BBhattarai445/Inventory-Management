@@ -12,7 +12,7 @@ st.title("🏭 Laserax GitHub Excel Inventory Manager (Online Cloud Portal)")
 # --- CONFIGURATION: GitHub Repository Details ---
 # ==============================================================================
 # Ensure these are accurate and your file inside GitHub is named exactly 'Inventory.xlsx'
-GITHUB_USER = "/bbhattarai445"
+GITHUB_USER = "/BBhattarai445"
 GITHUB_REPO = "Inventory-Management"
 FILE_PATH = "Inventory.xlsx"  
 
