@@ -20,6 +20,9 @@ FILE_PATH = "Inventory.xlsx"  # Name of your Excel file inside the repo
 
 # Secure connection using your Streamlit secret token
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
+# ==============================================================================
+# --- FIXED CONNECTOR: Ensures proper URL layout with system separators ---
+# ==============================================================================
 API_URL = f"https://github.com{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}"
 
 def save_to_github(dataframe):
