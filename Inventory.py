@@ -60,7 +60,7 @@ def save_to_github(dataframe):
         }
         put_res = requests.put(API_URL, headers=headers, json=data)
         
-        if put_res.status_code in [200, 201]:
+        if put_res.status_code == 200 or put_res.status_code == 201:
             st.toast("☁️ Repository inventory synced and locked live on GitHub successfully!", icon="✅")
         else:
             st.error(f"GitHub rejected save execution. Status code: {put_res.status_code}")
@@ -94,7 +94,8 @@ if "inventory_df" not in st.session_state or st.sidebar.button("🔄 Sync Live G
                 st.error("GitHub API returned data, but it did not contain file content.")
                 st.session_state.inventory_df = pd.DataFrame(columns=["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"])
         else:
-            st.error(f"Could not open spreadsheet data file. HTTP Status: {res.status_code}. Verify your GITHUB_TOKEN or check if the file is named exactly '{FILE_PATH}'.")
+            st.error(f"Could not open spreadsheet data file. HTTP Status: {res.status_code}.")
+            st.info(f"Double-check: 1. Is your file on GitHub named exactly '{FILE_PATH}'? 2. Is your repository name exactly '{GITHUB_REPO}'? 3. Did you add GITHUB_TOKEN to Secrets?")
             st.session_state.inventory_df = pd.DataFrame(columns=["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"])
     except Exception as e:
         st.error(f"Could not parse repository file. Details: {e}")
@@ -174,11 +175,13 @@ if len(df) > 0:
     select_options = [f"Row {row['S.No']}: {row['EQUIPMENT']}" for _, row in df.iterrows()]
     selected_option = st.selectbox("Choose tracking row record to modify or delete:", select_options)
     
-    # Grab row number cleanly
     try:
-        selected_sno = int(selected_option.split(": ")[0].replace("Row ", "").strip())
-        row_idx = df[df["S.No"] == selected_sno].index[0]
-        current_row = df.loc[row_idx]
+        if ": " in selected_option:
+            selected_sno = int(selected_option.split(": ")[0].replace("Row ", "").strip())
+        else:
+            selected_sno = int(selected_option.split(":")[0].replace("Row ", "").strip())
+        row_idx = df[df["S.No"] == selected_sno].index
+        current_row = df.loc[row_idx].iloc[0]
     except Exception as e:
         st.error(f"Selection indexing error: {e}")
         row_idx = None
@@ -200,15 +203,9 @@ if len(df) > 0:
             edit_rem = st.text_input("Remarks Logs:", value=str(current_row["REMARKS"]))
         with edit_row2_col3:
             edit_link = st.text_input("Procurement System URL:", value=str(current_row["PROCUREMENT LINK"]))
-            
+        
         action_col1, action_col2, action_col3, action_col4 = st.columns(4)
         
         with action_col1:
             if st.button("➕ Increase Stock (+1)", use_container_width=True):
-                st.session_state.inventory_df.at[row_idx, "STOCK"] += 1
-                save_to_github(st.session_state.inventory_df)
-                st.rerun()
-                
-        with action_col2:
-            if st.button("➖ Decrease Stock (-1)", use_container_width=True):
-                current_qty = st.session_state.inventory_df.at[row_idx, "STOCK"]
+                st.session_state.inventory_df.at[row_idx[0], "STOCK"] += 1
