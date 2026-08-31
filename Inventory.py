@@ -108,7 +108,8 @@ df = st.session_state.inventory_df
 # --- 1. TOP CONTROL FRAME (Search & Reset) ---
 # ==============================================================================
 st.markdown("---")
-top_col1, top_col2, top_col3 = st.columns()
+# FIXED LINE: Added 3 inside st.columns() to prevent column split errors
+top_col1, top_col2, top_col3 = st.columns(3)
 
 with top_col1:
     search_query = st.text_input("Search Equipment:", placeholder="Type equipment name to filter dashboard rows...", label_visibility="collapsed")
@@ -173,7 +174,7 @@ if len(df) > 0:
     select_options = [f"Row {row['S.No']}: {row['EQUIPMENT']}" for _, row in df.iterrows()]
     selected_option = st.selectbox("Choose tracking row record to modify or delete:", select_options)
     
-    selected_sno = int(selected_option.split(": ")[0].replace("Row ", ""))
+    selected_sno = int(selected_option.split(": ").replace("Row ", ""))
     row_idx = df[df["S.No"] == selected_sno].index
     current_row = df.loc[row_idx].iloc[0]
     
@@ -205,4 +206,3 @@ if len(df) > 0:
     with action_col2:
         if st.button("➖ Decrease Stock (-1)", use_container_width=True):
             current_qty = st.session_state.inventory_df.at[row_idx[0], "STOCK"]
-            st.session_state.inventory_df.at[row_idx[0], "STOCK"] = max(0, current_qty - 1)
