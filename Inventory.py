@@ -12,7 +12,7 @@ st.title("🏭 Laserax Local Excel Inventory Manager (Online Cloud Portal)")
 # --- CONFIGURATION: OneDrive Connections ---
 # ==============================================================================
 # Paste your modified Direct OneDrive link here for downloading data
-ONEDRIVE_FILE_URL = r"https://laseraxinc-my.sharepoint.com/:x:/g/personal/bbhattarai_laserax_com/IQDlpeWcuGCsTKPotwyxsN8fAZVN6H-adOr3sQTjHeCWd5w?rtime=c07oCEQH30g&download=1"
+ONEDRIVE_FILE_URL = r"https://laseraxinc-my.sharepoint.com/:u:/g/personal/bbhattarai_laserax_com/IQDlpeWcuGCsTKPotwyxsN8fAZVN6H-adOr3sQTjHeCWd5w?rtime=c07oCEQH30g?download=1"
 
 COLUMNS = ["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"]
 
