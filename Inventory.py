@@ -77,7 +77,7 @@ if "inventory_df" not in st.session_state or st.sidebar.button("🔄 Sync Live G
         if res.status_code == 200:
             json_data = res.json()
             if isinstance(json_data, dict) and "content" in json_data:
-                # FIXED LINE: Strips out hidden newlines that corrupt the file format reading stream
+                # Strips out hidden newlines that corrupt the file format reading stream
                 raw_base64_str = json_data["content"].replace("\n", "").replace("\r", "").strip()
                 file_data = base64.b64decode(raw_base64_str)
                 
@@ -140,7 +140,7 @@ with add_row1_col1:
     add_eq = st.text_input("Add Equipment Name:", key="add_eq")
 with add_row1_col2:
     add_proj = st.text_input("Add Project/Part No:", key="add_proj")
-with add_row1_col3 = st.columns(1)[0]:
+with add_row1_col3:
     add_stock = st.number_input("Add Stock Count Level:", min_value=0, step=1, value=0, key="add_stock")
 
 with add_row2_col1:
@@ -205,4 +205,4 @@ if len(df) > 0:
     with action_col2:
         if st.button("➖ Decrease Stock (-1)", use_container_width=True):
             current_qty = st.session_state.inventory_df.at[row_idx[0], "STOCK"]
-                st.session_state.inventory_df.at[row_idx[0], "EQUIPMENT"] = edit_eq
+            st.session_state.inventory_df.at[row_idx[0], "STOCK"] = max(0, current_qty - 1)
