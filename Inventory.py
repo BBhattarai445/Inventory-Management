@@ -72,28 +72,25 @@ if "inventory_df" not in st.session_state or st.sidebar.button("🔄 Sync Live G
         if GITHUB_TOKEN:
             headers["Authorization"] = f"token {GITHUB_TOKEN}"
         
-        # Try fetching via API first
-        res = requests.get(API_URL, headers=headers)
-        if res.status_code == 200:
-            json_data = res.json()
-            if isinstance(json_data, dict) and "content" in json_data:
-                # Strips out hidden newlines that corrupt the file format reading stream
-                raw_base64_str = json_data["content"].replace("\n", "").replace("\r", "").strip()
-                file_data = base64.b64decode(raw_base64_str)
-                
-                # Explicitly utilize openpyxl to resolve string format mapping blocks
-                st.session_state.inventory_df = pd.read_excel(io.BytesIO(file_data), engine="openpyxl")
-                st.session_state.inventory_df.columns = st.session_state.inventory_df.columns.str.strip()
-            else:
-                raise ValueError("API response structural error.")
+        # FIRST STEP: Try reading directly via the un-capped RAW url download link 
+        raw_res = requests.get(RAW_URL, headers=headers)
+        if raw_res.status_code == 200:
+            st.session_state.inventory_df = pd.read_excel(io.BytesIO(raw_res.content), engine="openpyxl")
+            st.session_state.inventory_df.columns = st.session_state.inventory_df.columns.str.strip()
         else:
-            # FALLBACK METHOD: Try reading directly via the raw link if API hits a block
-            raw_res = requests.get(RAW_URL, headers=headers)
-            if raw_res.status_code == 200:
-                st.session_state.inventory_df = pd.read_excel(io.BytesIO(raw_res.content), engine="openpyxl")
-                st.session_state.inventory_df.columns = st.session_state.inventory_df.columns.str.strip()
+            # SECOND STEP (FALLBACK): Try API fetching if raw content hits an access block
+            res = requests.get(API_URL, headers=headers)
+            if res.status_code == 200:
+                json_data = res.json()
+                if isinstance(json_data, dict) and "content" in json_data:
+                    raw_base64_str = json_data["content"].replace("\n", "").replace("\r", "").strip()
+                    file_data = base64.b64decode(raw_base64_str)
+                    st.session_state.inventory_df = pd.read_excel(io.BytesIO(file_data), engine="openpyxl")
+                    st.session_state.inventory_df.columns = st.session_state.inventory_df.columns.str.strip()
+                else:
+                    raise ValueError("API response structural error.")
             else:
-                st.error(f"Could not find file on GitHub. API status: {res.status_code}, Raw URL status: {raw_res.status_code}")
+                st.error(f"Could not download file. Raw URL status: {raw_res.status_code}, API status: {res.status_code}")
                 st.session_state.inventory_df = pd.DataFrame(columns=["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"])
     except Exception as e:
         st.error(f"Could not parse repository file. Details: {e}")
@@ -108,7 +105,6 @@ df = st.session_state.inventory_df
 # --- 1. TOP CONTROL FRAME (Search & Reset) ---
 # ==============================================================================
 st.markdown("---")
-# FIXED LINE: Added 3 inside st.columns() to prevent column split errors
 top_col1, top_col2, top_col3 = st.columns(3)
 
 with top_col1:
@@ -174,7 +170,7 @@ if len(df) > 0:
     select_options = [f"Row {row['S.No']}: {row['EQUIPMENT']}" for _, row in df.iterrows()]
     selected_option = st.selectbox("Choose tracking row record to modify or delete:", select_options)
     
-    selected_sno = int(selected_option.split(": ").replace("Row ", ""))
+    selected_sno = int(selected_option.split(": ")[1].replace("Row ", "") if ": " in selected_option else selected_option.split(":")[0].replace("Row ", ""))
     row_idx = df[df["S.No"] == selected_sno].index
     current_row = df.loc[row_idx].iloc[0]
     
@@ -206,3 +202,4 @@ if len(df) > 0:
     with action_col2:
         if st.button("➖ Decrease Stock (-1)", use_container_width=True):
             current_qty = st.session_state.inventory_df.at[row_idx[0], "STOCK"]
+            st.session_state.inventory_df.at[row_idx[0], "STOCK"] = max(0, current_qty - 1)
