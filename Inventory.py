@@ -1,4 +1,5 @@
 
+
 import streamlit as st
 import pandas as pd
 import io
@@ -12,6 +13,7 @@ st.title("🏭 Laserax GitHub Excel Inventory Manager (Online Cloud Portal)")
 # ==============================================================================
 # --- CONFIGURATION: GitHub Repository Details ---
 # ==============================================================================
+# ⚠️ REPLACE THESE TWO VALUES WITH YOUR ACTUAL GITHUB INFO
 GITHUB_USER = "BBhattarai445"
 GITHUB_REPO = "Inventory-Management-"
 FILE_PATH = "inventory.xlsx"  # Name of your Excel file inside the repo
@@ -19,7 +21,6 @@ FILE_PATH = "inventory.xlsx"  # Name of your Excel file inside the repo
 # Secure connection using your Streamlit secret token
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
 API_URL = f"https://github.com{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}"
-RAW_URL = f"https://githubusercontent.com{GITHUB_USER}/{GITHUB_REPO}/main/{FILE_PATH}"
 
 def save_to_github(dataframe):
     """
@@ -51,7 +52,8 @@ def save_to_github(dataframe):
         }
         put_res = requests.put(API_URL, headers=headers, json=data)
         
-        if put_res.status_code in:
+        # Validates successful creation (201) or update (200) from GitHub
+        if put_res.status_code in [200, 201]:
             st.toast("☁️ Repository inventory synced and locked live on GitHub successfully!", icon="✅")
         else:
             st.error(f"GitHub rejected save execution. Status code: {put_res.status_code}")
@@ -86,7 +88,7 @@ df = st.session_state.inventory_df
 # --- 1. TOP CONTROL FRAME (Search & Reset) ---
 # ==============================================================================
 st.markdown("---")
-top_col1, top_col2, top_col3 = st.columns()
+top_col1, top_col2, top_col3 = st.columns([4, 1, 1])
 
 with top_col1:
     search_query = st.text_input("Search Equipment:", placeholder="Type equipment name to filter dashboard rows...", label_visibility="collapsed")
@@ -101,7 +103,7 @@ else:
     display_df = df
 
 # ==============================================================================
-# --- 2. MIDDLE TABLE FRAME ---
+# --- 2. MIDDLE TABLE FRAME (Treeview Data Grid View) ---
 # ==============================================================================
 st.subheader("📋 Current Stock Inventory Grid View")
 st.dataframe(display_df, use_container_width=True, hide_index=True)
@@ -151,9 +153,9 @@ if len(df) > 0:
     select_options = [f"Row {row['S.No']}: {row['EQUIPMENT']}" for _, row in df.iterrows()]
     selected_option = st.selectbox("Choose tracking row record to modify or delete:", select_options)
     
-    selected_sno = int(selected_option.split(":").replace("Row ", ""))
+    selected_sno = int(selected_option.split(":")[0].replace("Row ", ""))
     row_idx = df[df["S.No"] == selected_sno].index
-    current_row = df.loc[row_idx].iloc
+    current_row = df.loc[row_idx[0]]
     
     edit_row1_col1, edit_row1_col2, edit_row1_col3 = st.columns(3)
     edit_row2_col1, edit_row2_col2, edit_row2_col3 = st.columns(3)
@@ -176,26 +178,26 @@ if len(df) > 0:
     
     with action_col1:
         if st.button("➕ Increase Stock (+1)", use_container_width=True):
-            st.session_state.inventory_df.at[row_idx, "STOCK"] += 1
+            st.session_state.inventory_df.at[row_idx[0], "STOCK"] += 1
             save_to_github(st.session_state.inventory_df)
             st.rerun()
             
     with action_col2:
         if st.button("➖ Decrease Stock (-1)", use_container_width=True):
-            current_qty = st.session_state.inventory_df.at[row_idx, "STOCK"]
-            st.session_state.inventory_df.at[row_idx, "STOCK"] = max(0, current_qty - 1)
+            current_qty = st.session_state.inventory_df.at[row_idx[0], "STOCK"]
+            st.session_state.inventory_df.at[row_idx[0], "STOCK"] = max(0, current_qty - 1)
             save_to_github(st.session_state.inventory_df)
             st.rerun()
             
     with action_col3:
         if st.button("💾 Save All Edits", use_container_width=True):
             if edit_eq:
-                st.session_state.inventory_df.at[row_idx, "EQUIPMENT"] = edit_eq
-                st.session_state.inventory_df.at[row_idx, "LASERAX PROJECT No. - Part NO"] = edit_proj
-                st.session_state.inventory_df.at[row_idx, "STOCK"] = edit_stock
-                st.session_state.inventory_df.at[row_idx, "LOCATION"] = edit_loc
-                st.session_state.inventory_df.at[row_idx, "REMARKS"] = edit_rem
-                st.session_state.inventory_df.at[row_idx, "PROCUREMENT LINK"] = edit_link
+                st.session_state.inventory_df.at[row_idx[0], "EQUIPMENT"] = edit_eq
+                st.session_state.inventory_df.at[row_idx[0], "LASERAX PROJECT No. - Part NO"] = edit_proj
+                st.session_state.inventory_df.at[row_idx[0], "STOCK"] = edit_stock
+                st.session_state.inventory_df.at[row_idx[0], "LOCATION"] = edit_loc
+                st.session_state.inventory_df.at[row_idx[0], "REMARKS"] = edit_rem
+                st.session_state.inventory_df.at[row_idx[0], "PROCUREMENT LINK"] = edit_link
                 
                 save_to_github(st.session_state.inventory_df)
                 st.rerun()
@@ -207,6 +209,3 @@ if len(df) > 0:
             st.session_state.inventory_df = df.drop(row_idx).reset_index(drop=True)
             st.session_state.inventory_df["S.No"] = range(1, len(st.session_state.inventory_df) + 1)
             
-            save_to_github(st.session_state.inventory_df)
-            st.rerun()
-else:
