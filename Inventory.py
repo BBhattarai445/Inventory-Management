@@ -1,51 +1,81 @@
+
 import streamlit as st
 import pandas as pd
-import requests
 import io
+import base64
+import requests
 
 # Set layout boundaries matching your manager tool styling
 st.set_page_config(page_title="Laserax Inventory Manager", layout="wide")
-st.title("🏭 Laserax Inventory Manager")
+st.title("🏭 Laserax GitHub Excel Inventory Manager (Online Cloud Portal)")
 
 # ==============================================================================
-# --- CONFIGURATION: Google Sheets Connections ---
+# --- CONFIGURATION: GitHub Repository Details ---
 # ==============================================================================
-SPREADSHEET_ID = r"https://laseraxinc-my.sharepoint.com/:x:/g/personal/bbhattarai_laserax_com/IQDlpeWcuGCsTKPotwyxsN8fAZVN6H-adOr3sQTjHeCWd5w?rtime=c07oCEQH30g"
+GITHUB_USER = "BBhattarai445"
+GITHUB_REPO = "Inventory-Management-"
+FILE_PATH = "inventory.xlsx"  # Name of your Excel file inside the repo
 
-# ==============================================================================
-# --- CONFIGURATION: Google Sheets Connections ---
-# ==============================================================================
-# Paste your EXACT browser share link here (Make sure 'Anyone with the link can edit' is turned on!)
-SHARE_LINK = "https://google.com"
+# Secure connection using your Streamlit secret token
+GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
+API_URL = f"https://github.com{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}"
+RAW_URL = f"https://githubusercontent.com{GITHUB_USER}/{GITHUB_REPO}/main/{FILE_PATH}"
 
-# This automatically cleans the link format for Python to download it safely
-GOOGLE_SHEET_DOWNLOAD_URL = SHARE_LINK.split("/edit")[0] + "/export?format=xlsx"
-
-
-COLUMNS = ["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"]
-
-def save_to_google_sheets(dataframe):
+def save_to_github(dataframe):
     """
-    Automated Save Engine: Formats the live data table and instantly pushes
-    the updates back to the shared Google Sheet using an HTTP export/import stream.
+    Automated Save Engine: Commits the updated Excel spreadsheet directly 
+    back to your GitHub repository invisibly in the background.
     """
-    try:
-        # Note: True cloud sync from an unauthenticated script works best by exporting
-        # CSV/Excel byte streams or utilizing a small deployment web app script.
-        # For seamless multi-user writes without handling API credentials,
-        # we trigger a Streamlit session save fallback layout.
-        st.toast("💾 Workspace layout changes tracked successfully!", icon="✅")
-    except Exception as e:
-        st.sidebar.error(f"Sync issue: {e}")
+    if not GITHUB_TOKEN:
+        st.error("Missing 'GITHUB_TOKEN' secret in your Streamlit dashboard settings.")
+        return
 
-# Load live records from the Google Sheet
-if "inventory_df" not in st.session_state or st.sidebar.button("🔄 Sync Live Cloud Data"):
     try:
-        st.session_state.inventory_df = pd.read_excel(GOOGLE_SHEET_DOWNLOAD_URL)
-        st.session_state.inventory_df.columns = st.session_state.inventory_df.columns.str.strip()
+        # 1. Convert the current layout data to an Excel binary block
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            dataframe.to_excel(writer, index=False)
+        buffer.seek(0)
+        content_encoded = base64.b64encode(buffer.getvalue()).decode()
+
+        # 2. Get the file's current cloud ID version (SHA hash) to allow overwriting
+        headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
+        get_res = requests.get(API_URL, headers=headers)
+        sha = get_res.json().get("sha", "") if get_res.status_code == 200 else ""
+
+        # 3. Push the fresh modifications live
+        data = {
+            "message": "Automated Inventory Sync update via Laserax Web Portal",
+            "content": content_encoded,
+            "sha": sha
+        }
+        put_res = requests.put(API_URL, headers=headers, json=data)
+        
+        if put_res.status_code in:
+            st.toast("☁️ Repository inventory synced and locked live on GitHub successfully!", icon="✅")
+        else:
+            st.error(f"GitHub rejected save execution. Status code: {put_res.status_code}")
     except Exception as e:
-        st.error(f"Could not reach Google cloud sheet. Please verify your Spreadsheet ID. Error: {e}")
-        st.session_state.inventory_df = pd.DataFrame(columns=COLUMNS)
+        st.error(f"Sync issue: {e}")
+
+# Load live records directly from your repository file block
+if "inventory_df" not in st.session_state or st.sidebar.button("🔄 Sync Live GitHub Data"):
+    try:
+        headers = {}
+        if GITHUB_TOKEN:
+            headers["Authorization"] = f"token {GITHUB_TOKEN}"
+        
+        # Download data directly using GitHub file hooks
+        res = requests.get(API_URL, headers=headers)
+        if res.status_code == 200:
+            file_data = base64.b64decode(res.json()["content"])
+            st.session_state.inventory_df = pd.read_excel(io.BytesIO(file_data))
+            st.session_state.inventory_df.columns = st.session_state.inventory_df.columns.str.strip()
+        else:
+            st.session_state.inventory_df = pd.DataFrame(columns=["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"])
+    except Exception as e:
+        st.error(f"Could not reach repository file. Error: {e}")
+        st.session_state.inventory_df = pd.DataFrame(columns=["S.No", "EQUIPMENT", "LASERAX PROJECT No. - Part NO", "STOCK", "LOCATION", "REMARKS", "PROCUREMENT LINK"])
 
 if "S.No" not in st.session_state.inventory_df.columns:
     st.session_state.inventory_df.insert(0, "S.No", range(1, len(st.session_state.inventory_df) + 1))
@@ -56,7 +86,7 @@ df = st.session_state.inventory_df
 # --- 1. TOP CONTROL FRAME (Search & Reset) ---
 # ==============================================================================
 st.markdown("---")
-top_col1, top_col2, top_col3 = st.columns([4, 1, 1])
+top_col1, top_col2, top_col3 = st.columns()
 
 with top_col1:
     search_query = st.text_input("Search Equipment:", placeholder="Type equipment name to filter dashboard rows...", label_visibility="collapsed")
@@ -71,7 +101,7 @@ else:
     display_df = df
 
 # ==============================================================================
-# --- 2. MIDDLE TABLE FRAME (Treeview Data Grid View) ---
+# --- 2. MIDDLE TABLE FRAME ---
 # ==============================================================================
 st.subheader("📋 Current Stock Inventory Grid View")
 st.dataframe(display_df, use_container_width=True, hide_index=True)
@@ -106,8 +136,7 @@ if st.button("Commit Add New Item Line", type="primary"):
             "STOCK": add_stock, "LOCATION": add_loc, "REMARKS": add_rem, "PROCUREMENT LINK": add_link
         }])
         st.session_state.inventory_df = pd.concat([df, new_row], ignore_index=True)
-        save_to_google_sheets(st.session_state.inventory_df)
-        st.success(f"Successfully added '{add_eq}' to tracking session!")
+        save_to_github(st.session_state.inventory_df)
         st.rerun()
     else:
         st.error("Equipment Name field cannot be left empty.")
@@ -122,9 +151,9 @@ if len(df) > 0:
     select_options = [f"Row {row['S.No']}: {row['EQUIPMENT']}" for _, row in df.iterrows()]
     selected_option = st.selectbox("Choose tracking row record to modify or delete:", select_options)
     
-    selected_sno = int(selected_option.split(":")[0].replace("Row ", ""))
+    selected_sno = int(selected_option.split(":").replace("Row ", ""))
     row_idx = df[df["S.No"] == selected_sno].index
-    current_row = df.loc[row_idx].iloc[0]
+    current_row = df.loc[row_idx].iloc
     
     edit_row1_col1, edit_row1_col2, edit_row1_col3 = st.columns(3)
     edit_row2_col1, edit_row2_col2, edit_row2_col3 = st.columns(3)
@@ -147,29 +176,28 @@ if len(df) > 0:
     
     with action_col1:
         if st.button("➕ Increase Stock (+1)", use_container_width=True):
-            st.session_state.inventory_df.at[row_idx[0], "STOCK"] += 1
-            save_to_google_sheets(st.session_state.inventory_df)
+            st.session_state.inventory_df.at[row_idx, "STOCK"] += 1
+            save_to_github(st.session_state.inventory_df)
             st.rerun()
             
     with action_col2:
         if st.button("➖ Decrease Stock (-1)", use_container_width=True):
-            current_qty = st.session_state.inventory_df.at[row_idx[0], "STOCK"]
-            st.session_state.inventory_df.at[row_idx[0], "STOCK"] = max(0, current_qty - 1)
-            save_to_google_sheets(st.session_state.inventory_df)
+            current_qty = st.session_state.inventory_df.at[row_idx, "STOCK"]
+            st.session_state.inventory_df.at[row_idx, "STOCK"] = max(0, current_qty - 1)
+            save_to_github(st.session_state.inventory_df)
             st.rerun()
             
     with action_col3:
         if st.button("💾 Save All Edits", use_container_width=True):
             if edit_eq:
-                st.session_state.inventory_df.at[row_idx[0], "EQUIPMENT"] = edit_eq
-                st.session_state.inventory_df.at[row_idx[0], "LASERAX PROJECT No. - Part NO"] = edit_proj
-                st.session_state.inventory_df.at[row_idx[0], "STOCK"] = edit_stock
-                st.session_state.inventory_df.at[row_idx[0], "LOCATION"] = edit_loc
-                st.session_state.inventory_df.at[row_idx[0], "REMARKS"] = edit_rem
-                st.session_state.inventory_df.at[row_idx[0], "PROCUREMENT LINK"] = edit_link
+                st.session_state.inventory_df.at[row_idx, "EQUIPMENT"] = edit_eq
+                st.session_state.inventory_df.at[row_idx, "LASERAX PROJECT No. - Part NO"] = edit_proj
+                st.session_state.inventory_df.at[row_idx, "STOCK"] = edit_stock
+                st.session_state.inventory_df.at[row_idx, "LOCATION"] = edit_loc
+                st.session_state.inventory_df.at[row_idx, "REMARKS"] = edit_rem
+                st.session_state.inventory_df.at[row_idx, "PROCUREMENT LINK"] = edit_link
                 
-                save_to_google_sheets(st.session_state.inventory_df)
-                st.success("Changes updated locally!")
+                save_to_github(st.session_state.inventory_df)
                 st.rerun()
             else:
                 st.error("Name field required.")
@@ -179,8 +207,6 @@ if len(df) > 0:
             st.session_state.inventory_df = df.drop(row_idx).reset_index(drop=True)
             st.session_state.inventory_df["S.No"] = range(1, len(st.session_state.inventory_df) + 1)
             
-            save_to_google_sheets(st.session_state.inventory_df)
-            st.warning("Selected tracking line removed successfully!")
+            save_to_github(st.session_state.inventory_df)
             st.rerun()
 else:
-    st.info("Database table matrix is currently completely blank.")
