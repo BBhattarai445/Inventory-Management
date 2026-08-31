@@ -14,7 +14,7 @@ st.title("🏭 Laserax Inventory Manager")
 # --- CONFIGURATION: GitHub Repository Details ---
 # ==============================================================================
 # ⚠️ REPLACE THESE TWO VALUES WITH YOUR ACTUAL GITHUB INFO
-GITHUB_USER = "BBhattarai445"
+GITHUB_USER = "/BBhattarai445"
 GITHUB_REPO = "Inventory-Management"
 FILE_PATH = "Inventory.xlsx"  # Name of your Excel file inside the repo
 
@@ -23,7 +23,7 @@ GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
 # ==============================================================================
 # --- FIXED CONNECTOR: Ensures proper URL layout with system separators ---
 # ==============================================================================
-API_URL = f"https://github.com{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}"
+API_URL = f"https://github.com{GITHUB_USER}/{GITHUB_REPO}//blob/main/{FILE_PATH}"
 
 def save_to_github(dataframe):
     """
