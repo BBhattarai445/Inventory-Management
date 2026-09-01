@@ -7,11 +7,12 @@ import requests
 
 
 # ==============================================================================
-# PAGE CONFIGURATION
+# PAGE CONFIG
 # ==============================================================================
 
 st.set_page_config(
     page_title="Laserax Inventory Manager",
+    page_icon="🏭",
     layout="wide"
 )
 
@@ -29,26 +30,32 @@ API_URL = (
     f"{GITHUB_USER}/{GITHUB_REPO}/contents/{FILE_PATH}"
 )
 
+
+# ==============================================================================
+# STREAMLIT SECRETS
+# ==============================================================================
+
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
 
+ADMIN_USERNAME = st.secrets.get(
+    "ADMIN_USERNAME",
+    "admin"
+)
 
-# ==============================================================================
-# LOGIN CONFIGURATION
-#
-# Put these values in Streamlit Secrets.
-#
-# ADMIN_USERNAME = "admin"
-# ADMIN_PASSWORD = "your-admin-password"
-# USER_USERNAME = "user"
-# USER_PASSWORD = "your-user-password"
-#
-# ==============================================================================
+ADMIN_PASSWORD = st.secrets.get(
+    "ADMIN_PASSWORD",
+    ""
+)
 
-ADMIN_USERNAME = st.secrets.get("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "")
+USER_USERNAME = st.secrets.get(
+    "USER_USERNAME",
+    "user"
+)
 
-USER_USERNAME = st.secrets.get("USER_USERNAME", "user")
-USER_PASSWORD = st.secrets.get("USER_PASSWORD", "")
+USER_PASSWORD = st.secrets.get(
+    "USER_PASSWORD",
+    ""
+)
 
 
 # ==============================================================================
@@ -79,9 +86,12 @@ if "role" not in st.session_state:
 if "username" not in st.session_state:
     st.session_state.username = None
 
+if "inventory_df" not in st.session_state:
+    st.session_state.inventory_df = None
+
 
 # ==============================================================================
-# LOGIN FUNCTION
+# LOGIN PAGE
 # ==============================================================================
 
 def login_page():
@@ -92,11 +102,9 @@ def login_page():
 
     st.subheader("🔐 Login")
 
-    login_col1, login_col2, login_col3 = st.columns(
-        [1, 2, 1]
-    )
+    col1, col2, col3 = st.columns([1, 2, 1])
 
-    with login_col2:
+    with col2:
 
         username = st.text_input(
             "Username",
@@ -109,18 +117,15 @@ def login_page():
             placeholder="Enter password"
         )
 
-        login_clicked = st.button(
+        login = st.button(
             "🔐 Login",
             type="primary",
             use_container_width=True
         )
 
-        if login_clicked:
+        if login:
 
-            # --------------------------------------------------------------
             # ADMIN LOGIN
-            # --------------------------------------------------------------
-
             if (
                 username == ADMIN_USERNAME
                 and password == ADMIN_PASSWORD
@@ -130,14 +135,12 @@ def login_page():
                 st.session_state.authenticated = True
                 st.session_state.role = "admin"
                 st.session_state.username = username
+                st.session_state.inventory_df = None
 
                 st.rerun()
 
 
-            # --------------------------------------------------------------
             # USER LOGIN
-            # --------------------------------------------------------------
-
             elif (
                 username == USER_USERNAME
                 and password == USER_PASSWORD
@@ -147,6 +150,7 @@ def login_page():
                 st.session_state.authenticated = True
                 st.session_state.role = "user"
                 st.session_state.username = username
+                st.session_state.inventory_df = None
 
                 st.rerun()
 
@@ -165,7 +169,7 @@ def login_page():
 
 
 # ==============================================================================
-# SHOW LOGIN PAGE IF NOT AUTHENTICATED
+# STOP HERE IF NOT LOGGED IN
 # ==============================================================================
 
 if not st.session_state.authenticated:
@@ -175,94 +179,16 @@ if not st.session_state.authenticated:
 
 
 # ==============================================================================
-# CURRENT USER INFORMATION
+# ROLE
 # ==============================================================================
 
-is_admin = st.session_state.role == "admin"
-is_user = st.session_state.role == "user"
+is_admin = (
+    st.session_state.role == "admin"
+)
 
-
-# ==============================================================================
-# SIDEBAR
-# ==============================================================================
-
-with st.sidebar:
-
-    st.markdown("## 👤 Account")
-
-    if is_admin:
-
-        st.success(
-            f"👑 Admin\n\n"
-            f"Logged in as: **{st.session_state.username}**"
-        )
-
-    else:
-
-        st.info(
-            f"👤 Inventory User\n\n"
-            f"Logged in as: **{st.session_state.username}**"
-        )
-
-
-    st.markdown("---")
-
-
-    # --------------------------------------------------------------------------
-    # LOGOUT
-    # --------------------------------------------------------------------------
-
-    if st.button(
-        "🚪 Logout",
-        use_container_width=True
-    ):
-
-        st.session_state.authenticated = False
-        st.session_state.role = None
-        st.session_state.username = None
-
-        if "inventory_df" in st.session_state:
-            del st.session_state.inventory_df
-
-        st.rerun()
-
-
-    # --------------------------------------------------------------------------
-    # ADMIN-ONLY GITHUB SYNC
-    # --------------------------------------------------------------------------
-
-    if is_admin:
-
-        st.markdown("---")
-        st.markdown("### 👑 Admin Controls")
-
-        sync_clicked = st.button(
-            "🔄 Sync Live GitHub Data",
-            use_container_width=True
-        )
-
-    else:
-
-        sync_clicked = False
-
-
-# ==============================================================================
-# PAGE TITLE
-# ==============================================================================
-
-st.title("🏭 Laserax Inventory Manager")
-
-if is_admin:
-
-    st.caption(
-        "👑 Administrator Mode — Full Inventory Management"
-    )
-
-else:
-
-    st.caption(
-        "👤 Inventory User Mode — Existing Inventory Editing Only"
-    )
+is_user = (
+    st.session_state.role == "user"
+)
 
 
 # ==============================================================================
@@ -286,7 +212,7 @@ def get_github_headers():
 
 
 # ==============================================================================
-# LOAD FROM GITHUB
+# LOAD INVENTORY FROM GITHUB
 # ==============================================================================
 
 def load_from_github():
@@ -294,7 +220,7 @@ def load_from_github():
     if not GITHUB_TOKEN:
 
         st.error(
-            "❌ Missing GITHUB_TOKEN in Streamlit Secrets."
+            "❌ GITHUB_TOKEN is missing from Streamlit Secrets."
         )
 
         return pd.DataFrame(
@@ -304,11 +230,9 @@ def load_from_github():
 
     try:
 
-        headers = get_github_headers()
-
         response = requests.get(
             API_URL,
-            headers=headers,
+            headers=get_github_headers(),
             timeout=30
         )
 
@@ -317,8 +241,8 @@ def load_from_github():
 
             st.error(
                 f"❌ Could not load Inventory.xlsx from GitHub.\n\n"
-                f"HTTP Status: {response.status_code}\n"
-                f"Response: {response.text[:500]}"
+                f"HTTP Status: {response.status_code}\n\n"
+                f"{response.text[:500]}"
             )
 
             return pd.DataFrame(
@@ -332,7 +256,7 @@ def load_from_github():
         if "content" not in github_data:
 
             st.error(
-                "❌ GitHub API response did not contain file content."
+                "❌ GitHub response did not contain file content."
             )
 
             return pd.DataFrame(
@@ -359,6 +283,7 @@ def load_from_github():
         )
 
 
+        # Clean column names
         dataframe.columns = (
             dataframe.columns
             .astype(str)
@@ -366,8 +291,7 @@ def load_from_github():
         )
 
 
-        # Make sure all columns exist
-
+        # Make sure every required column exists
         for column in DEFAULT_COLUMNS:
 
             if column not in dataframe.columns:
@@ -380,12 +304,14 @@ def load_from_github():
         ]
 
 
+        # Rebuild S.No
         dataframe["S.No"] = range(
             1,
             len(dataframe) + 1
         )
 
 
+        # Make STOCK numeric
         dataframe["STOCK"] = pd.to_numeric(
             dataframe["STOCK"],
             errors="coerce"
@@ -407,7 +333,7 @@ def load_from_github():
 
 
 # ==============================================================================
-# SAVE TO GITHUB
+# SAVE INVENTORY TO GITHUB
 # ==============================================================================
 
 def save_to_github(dataframe):
@@ -415,7 +341,7 @@ def save_to_github(dataframe):
     if not GITHUB_TOKEN:
 
         st.error(
-            "❌ Missing GITHUB_TOKEN in Streamlit Secrets."
+            "❌ GITHUB_TOKEN is missing from Streamlit Secrets."
         )
 
         return False
@@ -424,7 +350,7 @@ def save_to_github(dataframe):
     try:
 
         # ----------------------------------------------------------------------
-        # Create Excel in memory
+        # Create Excel file in memory
         # ----------------------------------------------------------------------
 
         buffer = io.BytesIO()
@@ -446,40 +372,37 @@ def save_to_github(dataframe):
 
 
         # ----------------------------------------------------------------------
-        # Encode Excel as Base64
+        # Convert to Base64
         # ----------------------------------------------------------------------
 
-        content_encoded = base64.b64encode(
+        encoded_content = base64.b64encode(
             buffer.getvalue()
         ).decode("utf-8")
 
 
         # ----------------------------------------------------------------------
-        # Get current GitHub SHA
+        # Get current SHA
         # ----------------------------------------------------------------------
 
-        headers = get_github_headers()
-
-
-        get_response = requests.get(
+        response = requests.get(
             API_URL,
-            headers=headers,
+            headers=get_github_headers(),
             timeout=30
         )
 
 
-        if get_response.status_code != 200:
+        if response.status_code != 200:
 
             st.error(
-                f"❌ Could not access Inventory.xlsx on GitHub.\n\n"
-                f"HTTP Status: {get_response.status_code}\n"
-                f"Response: {get_response.text[:500]}"
+                f"❌ Could not access Inventory.xlsx.\n\n"
+                f"HTTP Status: {response.status_code}\n\n"
+                f"{response.text[:500]}"
             )
 
             return False
 
 
-        github_file = get_response.json()
+        github_file = response.json()
 
         sha = github_file.get("sha")
 
@@ -494,49 +417,42 @@ def save_to_github(dataframe):
 
 
         # ----------------------------------------------------------------------
-        # Upload updated Excel
+        # Upload
         # ----------------------------------------------------------------------
 
         payload = {
 
             "message":
-                "Update inventory via Laserax Inventory Manager",
+                "Update inventory via Streamlit",
 
             "content":
-                content_encoded,
+                encoded_content,
 
             "sha":
                 sha
         }
 
 
-        put_response = requests.put(
+        upload_response = requests.put(
             API_URL,
-            headers=headers,
+            headers=get_github_headers(),
             json=payload,
             timeout=30
         )
 
 
-        if put_response.status_code in [200, 201]:
-
-            st.toast(
-                "☁️ Inventory saved to GitHub!",
-                icon="✅"
-            )
+        if upload_response.status_code in [200, 201]:
 
             return True
 
 
-        else:
+        st.error(
+            f"❌ GitHub save failed.\n\n"
+            f"HTTP Status: {upload_response.status_code}\n\n"
+            f"{upload_response.text[:500]}"
+        )
 
-            st.error(
-                f"❌ GitHub rejected the save.\n\n"
-                f"HTTP Status: {put_response.status_code}\n"
-                f"Response: {put_response.text[:500]}"
-            )
-
-            return False
+        return False
 
 
     except Exception as e:
@@ -549,12 +465,11 @@ def save_to_github(dataframe):
 
 
 # ==============================================================================
-# INITIAL LOAD
+# LOAD DATA
 # ==============================================================================
 
 if (
-    "inventory_df" not in st.session_state
-    or sync_clicked
+    st.session_state.inventory_df is None
 ):
 
     with st.spinner(
@@ -566,24 +481,11 @@ if (
         )
 
 
-# ==============================================================================
-# MAKE SURE DATAFRAME EXISTS
-# ==============================================================================
-
-if "inventory_df" not in st.session_state:
-
-    st.session_state.inventory_df = (
-        pd.DataFrame(
-            columns=DEFAULT_COLUMNS
-        )
-    )
-
-
 df = st.session_state.inventory_df
 
 
 # ==============================================================================
-# CLEAN DATAFRAME
+# CLEAN DATA
 # ==============================================================================
 
 for column in DEFAULT_COLUMNS:
@@ -614,6 +516,218 @@ st.session_state.inventory_df = df
 
 
 # ==============================================================================
+# SIDEBAR
+# ==============================================================================
+
+with st.sidebar:
+
+    st.markdown("## 👤 Account")
+
+    if is_admin:
+
+        st.success(
+            f"👑 **Administrator**\n\n"
+            f"{st.session_state.username}"
+        )
+
+    else:
+
+        st.info(
+            f"👤 **Inventory User**\n\n"
+            f"{st.session_state.username}"
+        )
+
+
+    st.markdown("---")
+
+
+    # ======================================================================
+    # ADMIN ONLY — MANAGE APP
+    # ======================================================================
+
+    if is_admin:
+
+        st.markdown("## ⚙️ Manage App")
+
+        st.caption(
+            "Administrator-only application controls."
+        )
+
+
+        st.markdown(
+            """
+            **Admin permissions**
+            
+            • Application management  
+            • Inventory management  
+            • GitHub synchronization  
+            • System controls
+            """
+        )
+
+
+        st.markdown("---")
+
+
+        if st.button(
+            "🔄 Sync GitHub",
+            use_container_width=True
+        ):
+
+            with st.spinner(
+                "Syncing with GitHub..."
+            ):
+
+                st.session_state.inventory_df = (
+                    load_from_github()
+                )
+
+            st.success(
+                "✅ Inventory synchronized."
+            )
+
+            st.rerun()
+
+
+    # ======================================================================
+    # USER — NO MANAGE APP SECTION
+    # ======================================================================
+
+    else:
+
+        st.markdown("## 📦 Inventory")
+
+        st.caption(
+            "Inventory management access."
+        )
+
+
+        if st.button(
+            "🔄 Sync GitHub",
+            use_container_width=True
+        ):
+
+            with st.spinner(
+                "Syncing with GitHub..."
+            ):
+
+                st.session_state.inventory_df = (
+                    load_from_github()
+                )
+
+            st.success(
+                "✅ Inventory synchronized."
+            )
+
+            st.rerun()
+
+
+    st.markdown("---")
+
+
+    # ======================================================================
+    # LOGOUT
+    # ======================================================================
+
+    if st.button(
+        "🚪 Logout",
+        use_container_width=True
+    ):
+
+        st.session_state.authenticated = False
+        st.session_state.role = None
+        st.session_state.username = None
+        st.session_state.inventory_df = None
+
+        st.rerun()
+
+
+# ==============================================================================
+# MAIN TITLE
+# ==============================================================================
+
+st.title("🏭 Laserax Inventory Manager")
+
+
+if is_admin:
+
+    st.caption(
+        "👑 Administrator Portal"
+    )
+
+else:
+
+    st.caption(
+        "👤 Inventory User Portal"
+    )
+
+
+# ==============================================================================
+# ADMIN-ONLY MANAGE APP PANEL
+# ==============================================================================
+
+if is_admin:
+
+    with st.expander(
+        "⚙️ Manage App",
+        expanded=False
+    ):
+
+        st.subheader(
+            "Application Management"
+        )
+
+        st.info(
+            "This section is available only to administrators."
+        )
+
+
+        manage_col1, manage_col2, manage_col3 = st.columns(3)
+
+
+        with manage_col1:
+
+            st.metric(
+                "Inventory Records",
+                len(df)
+            )
+
+
+        with manage_col2:
+
+            total_stock = int(
+                df["STOCK"].sum()
+            )
+
+            st.metric(
+                "Total Stock",
+                total_stock
+            )
+
+
+        with manage_col3:
+
+            unique_equipment = (
+                df["EQUIPMENT"]
+                .astype(str)
+                .nunique()
+            )
+
+            st.metric(
+                "Equipment Types",
+                unique_equipment
+            )
+
+
+        st.markdown("---")
+
+        st.write(
+            "👑 Administrator access includes "
+            "application-level controls."
+        )
+
+
+# ==============================================================================
 # SEARCH
 # ==============================================================================
 
@@ -623,28 +737,28 @@ st.subheader("🔎 Search Inventory")
 
 
 search_col1, search_col2 = st.columns(
-    [3, 1]
+    [4, 1]
 )
 
 
 with search_col1:
 
     search_query = st.text_input(
-        "Search Equipment",
-        placeholder="Type equipment name...",
+        "Search",
+        placeholder="Search equipment...",
         label_visibility="collapsed"
     )
 
 
 with search_col2:
 
-    reset_clicked = st.button(
-        "🔄 Reset View",
+    reset = st.button(
+        "🔄 Reset",
         use_container_width=True
     )
 
 
-if reset_clicked:
+if reset:
 
     st.rerun()
 
@@ -692,169 +806,157 @@ st.caption(
 
 
 # ==============================================================================
-# ADMIN ONLY — ADD NEW ITEM
-# ==============================================================================
-
-if is_admin:
-
-    st.markdown("---")
-
-    st.subheader(
-        "👑 ➕ Add New Inventory Line Item"
-    )
-
-
-    add_col1, add_col2, add_col3 = st.columns(3)
-
-
-    with add_col1:
-
-        add_eq = st.text_input(
-            "Equipment Name",
-            key="add_eq"
-        )
-
-
-    with add_col2:
-
-        add_proj = st.text_input(
-            "Project / Part No.",
-            key="add_proj"
-        )
-
-
-    with add_col3:
-
-        add_stock = st.number_input(
-            "Stock Count",
-            min_value=0,
-            step=1,
-            value=0,
-            key="add_stock"
-        )
-
-
-    add_col4, add_col5, add_col6 = st.columns(3)
-
-
-    with add_col4:
-
-        add_loc = st.text_input(
-            "Warehouse Location",
-            key="add_loc"
-        )
-
-
-    with add_col5:
-
-        add_rem = st.text_input(
-            "Remarks / Notes",
-            key="add_rem"
-        )
-
-
-    with add_col6:
-
-        add_link = st.text_input(
-            "Procurement URL",
-            key="add_link"
-        )
-
-
-    if st.button(
-        "💾 Add New Inventory Item",
-        type="primary",
-        use_container_width=True
-    ):
-
-        if not add_eq.strip():
-
-            st.error(
-                "❌ Equipment Name cannot be empty."
-            )
-
-        else:
-
-            new_row = pd.DataFrame([{
-
-                "S.No":
-                    len(df) + 1,
-
-                "EQUIPMENT":
-                    add_eq.strip(),
-
-                "LASERAX PROJECT No. - Part NO":
-                    add_proj.strip(),
-
-                "STOCK":
-                    int(add_stock),
-
-                "LOCATION":
-                    add_loc.strip(),
-
-                "REMARKS":
-                    add_rem.strip(),
-
-                "PROCUREMENT LINK":
-                    add_link.strip()
-            }])
-
-
-            updated_df = pd.concat(
-                [df, new_row],
-                ignore_index=True
-            )
-
-
-            updated_df["S.No"] = range(
-                1,
-                len(updated_df) + 1
-            )
-
-
-            if save_to_github(
-                updated_df
-            ):
-
-                st.session_state.inventory_df = (
-                    updated_df
-                )
-
-                st.success(
-                    "✅ New inventory item added."
-                )
-
-                st.rerun()
-
-
-# ==============================================================================
-# EDIT EXISTING INVENTORY
+# ADD INVENTORY
+# ADMIN + USER
 # ==============================================================================
 
 st.markdown("---")
 
-if is_admin:
+st.subheader("➕ Add New Inventory Item")
 
-    st.subheader(
-        "✏️ 👑 Manage Existing Inventory"
+
+add_col1, add_col2, add_col3 = st.columns(3)
+
+
+with add_col1:
+
+    add_eq = st.text_input(
+        "Equipment Name",
+        key="add_equipment"
     )
 
-else:
 
-    st.subheader(
-        "✏️ Edit Existing Inventory"
+with add_col2:
+
+    add_proj = st.text_input(
+        "Project / Part No.",
+        key="add_project"
     )
+
+
+with add_col3:
+
+    add_stock = st.number_input(
+        "Stock",
+        min_value=0,
+        value=0,
+        step=1,
+        key="add_stock"
+    )
+
+
+add_col4, add_col5, add_col6 = st.columns(3)
+
+
+with add_col4:
+
+    add_loc = st.text_input(
+        "Location",
+        key="add_location"
+    )
+
+
+with add_col5:
+
+    add_rem = st.text_input(
+        "Remarks",
+        key="add_remarks"
+    )
+
+
+with add_col6:
+
+    add_link = st.text_input(
+        "Procurement Link",
+        key="add_link"
+    )
+
+
+if st.button(
+    "💾 Add Inventory Item",
+    type="primary",
+    use_container_width=True
+):
+
+    if not add_eq.strip():
+
+        st.error(
+            "❌ Equipment Name is required."
+        )
+
+    else:
+
+        new_row = pd.DataFrame([{
+
+            "S.No":
+                len(df) + 1,
+
+            "EQUIPMENT":
+                add_eq.strip(),
+
+            "LASERAX PROJECT No. - Part NO":
+                add_proj.strip(),
+
+            "STOCK":
+                int(add_stock),
+
+            "LOCATION":
+                add_loc.strip(),
+
+            "REMARKS":
+                add_rem.strip(),
+
+            "PROCUREMENT LINK":
+                add_link.strip()
+        }])
+
+
+        updated_df = pd.concat(
+            [df, new_row],
+            ignore_index=True
+        )
+
+
+        updated_df["S.No"] = range(
+            1,
+            len(updated_df) + 1
+        )
+
+
+        if save_to_github(
+            updated_df
+        ):
+
+            st.session_state.inventory_df = (
+                updated_df
+            )
+
+            st.success(
+                "✅ Inventory item added successfully."
+            )
+
+            st.rerun()
+
+
+# ==============================================================================
+# EDIT / DELETE INVENTORY
+# ADMIN + USER
+# ==============================================================================
+
+st.markdown("---")
+
+st.subheader("✏️ Manage Inventory")
 
 
 if len(df) == 0:
 
     st.info(
-        "There are currently no inventory records."
+        "No inventory records available."
     )
 
 else:
 
-    select_options = [
+    options = [
 
         f"Row {row['S.No']}: {row['EQUIPMENT']}"
 
@@ -862,56 +964,35 @@ else:
     ]
 
 
-    selected_option = st.selectbox(
-        "Choose inventory record",
-        select_options
+    selected = st.selectbox(
+        "Select inventory record",
+        options
     )
 
 
-    try:
-
-        selected_sno = int(
-            selected_option
-            .split(": ")[0]
-            .replace("Row ", "")
-            .strip()
-        )
+    selected_sno = int(
+        selected
+        .split(": ")[0]
+        .replace("Row ", "")
+        .strip()
+    )
 
 
-        matching_rows = df[
-            df["S.No"] == selected_sno
-        ]
+    matching = df[
+        df["S.No"] == selected_sno
+    ]
 
 
-        if len(matching_rows) == 0:
+    if len(matching) > 0:
 
-            st.error(
-                "❌ Selected record could not be found."
-            )
+        row_idx = matching.index[0]
 
-            row_idx = None
-
-        else:
-
-            row_idx = matching_rows.index[0]
-
-            current_row = df.loc[row_idx]
+        current = df.loc[row_idx]
 
 
-    except Exception as e:
-
-        st.error(
-            f"❌ Selection error: {e}"
-        )
-
-        row_idx = None
-
-
-    # ==========================================================================
-    # EDIT FIELDS
-    # ==========================================================================
-
-    if row_idx is not None:
+        # ==================================================================
+        # EDIT FIELDS
+        # ==================================================================
 
         edit_col1, edit_col2, edit_col3 = st.columns(3)
 
@@ -921,7 +1002,7 @@ else:
             edit_eq = st.text_input(
                 "Equipment Name",
                 value=str(
-                    current_row["EQUIPMENT"]
+                    current["EQUIPMENT"]
                 ),
                 key=f"edit_eq_{selected_sno}"
             )
@@ -930,9 +1011,9 @@ else:
         with edit_col2:
 
             edit_proj = st.text_input(
-                "Project No. / Part No.",
+                "Project / Part No.",
                 value=str(
-                    current_row[
+                    current[
                         "LASERAX PROJECT No. - Part NO"
                     ]
                 ),
@@ -943,12 +1024,12 @@ else:
         with edit_col3:
 
             edit_stock = st.number_input(
-                "Current Stock",
+                "Stock",
                 min_value=0,
-                step=1,
                 value=int(
-                    current_row["STOCK"]
+                    current["STOCK"]
                 ),
+                step=1,
                 key=f"edit_stock_{selected_sno}"
             )
 
@@ -959,9 +1040,9 @@ else:
         with edit_col4:
 
             edit_loc = st.text_input(
-                "Storage Location",
+                "Location",
                 value=str(
-                    current_row["LOCATION"]
+                    current["LOCATION"]
                 ),
                 key=f"edit_loc_{selected_sno}"
             )
@@ -972,7 +1053,7 @@ else:
             edit_rem = st.text_input(
                 "Remarks",
                 value=str(
-                    current_row["REMARKS"]
+                    current["REMARKS"]
                 ),
                 key=f"edit_rem_{selected_sno}"
             )
@@ -981,35 +1062,29 @@ else:
         with edit_col6:
 
             edit_link = st.text_input(
-                "Procurement URL",
+                "Procurement Link",
                 value=str(
-                    current_row["PROCUREMENT LINK"]
+                    current["PROCUREMENT LINK"]
                 ),
                 key=f"edit_link_{selected_sno}"
             )
 
 
-        # ======================================================================
+        # ==================================================================
         # ACTION BUTTONS
-        # ======================================================================
+        # ==================================================================
 
-        if is_admin:
-
-            action_col1, action_col2, action_col3, action_col4 = st.columns(4)
-
-        else:
-
-            action_col1, action_col2, action_col3 = st.columns(3)
+        action1, action2, action3, action4 = st.columns(4)
 
 
-        # ======================================================================
-        # INCREASE STOCK — ADMIN AND USER
-        # ======================================================================
+        # ==================================================================
+        # INCREASE
+        # ==================================================================
 
-        with action_col1:
+        with action1:
 
             if st.button(
-                "➕ Increase Stock (+1)",
+                "➕ Increase Stock",
                 use_container_width=True
             ):
 
@@ -1018,18 +1093,17 @@ else:
                 )
 
 
-                current_qty = int(
-                    updated_df.at[
-                        row_idx,
-                        "STOCK"
-                    ]
-                )
-
-
                 updated_df.at[
                     row_idx,
                     "STOCK"
-                ] = current_qty + 1
+                ] = (
+                    int(
+                        updated_df.at[
+                            row_idx,
+                            "STOCK"
+                        ]
+                    ) + 1
+                )
 
 
                 if save_to_github(
@@ -1040,17 +1114,21 @@ else:
                         updated_df
                     )
 
+                    st.success(
+                        "✅ Stock increased."
+                    )
+
                     st.rerun()
 
 
-        # ======================================================================
-        # DECREASE STOCK — ADMIN AND USER
-        # ======================================================================
+        # ==================================================================
+        # DECREASE
+        # ==================================================================
 
-        with action_col2:
+        with action2:
 
             if st.button(
-                "➖ Decrease Stock (-1)",
+                "➖ Decrease Stock",
                 use_container_width=True
             ):
 
@@ -1059,7 +1137,7 @@ else:
                 )
 
 
-                current_qty = int(
+                current_stock = int(
                     updated_df.at[
                         row_idx,
                         "STOCK"
@@ -1067,12 +1145,12 @@ else:
                 )
 
 
-                if current_qty > 0:
+                if current_stock > 0:
 
                     updated_df.at[
                         row_idx,
                         "STOCK"
-                    ] = current_qty - 1
+                    ] = current_stock - 1
 
 
                     if save_to_github(
@@ -1081,6 +1159,10 @@ else:
 
                         st.session_state.inventory_df = (
                             updated_df
+                        )
+
+                        st.success(
+                            "✅ Stock decreased."
                         )
 
                         st.rerun()
@@ -1092,11 +1174,11 @@ else:
                     )
 
 
-        # ======================================================================
-        # SAVE CHANGES — ADMIN AND USER
-        # ======================================================================
+        # ==================================================================
+        # SAVE
+        # ==================================================================
 
-        with action_col3:
+        with action3:
 
             if st.button(
                 "💾 Save Changes",
@@ -1107,7 +1189,7 @@ else:
                 if not edit_eq.strip():
 
                     st.error(
-                        "❌ Equipment Name cannot be empty."
+                        "❌ Equipment Name is required."
                     )
 
                 else:
@@ -1162,33 +1244,48 @@ else:
                         )
 
                         st.success(
-                            "✅ Inventory record updated."
+                            "✅ Changes saved."
                         )
 
                         st.rerun()
 
 
-        # ======================================================================
-        # DELETE — ADMIN ONLY
-        # ======================================================================
+        # ==================================================================
+        # DELETE
+        # ==================================================================
 
-        if is_admin:
+        with action4:
 
-            with action_col4:
+            if st.button(
+                "🗑️ Delete Item",
+                use_container_width=True
+            ):
 
-                if st.button(
-                    "🗑️ Delete Item",
-                    use_container_width=True
-                ):
-
-                    # Confirmation checkbox
-                    confirm_delete = st.checkbox(
-                        "I confirm I want to delete this item.",
-                        key=f"confirm_delete_{selected_sno}"
-                    )
+                st.session_state[
+                    f"confirm_delete_{selected_sno}"
+                ] = True
 
 
-                    if confirm_delete:
+            if st.session_state.get(
+                f"confirm_delete_{selected_sno}",
+                False
+            ):
+
+                st.warning(
+                    "⚠️ Are you sure you want to delete this item?"
+                )
+
+
+                confirm_col1, confirm_col2 = st.columns(2)
+
+
+                with confirm_col1:
+
+                    if st.button(
+                        "✅ Yes, Delete",
+                        key=f"yes_delete_{selected_sno}",
+                        use_container_width=True
+                    ):
 
                         updated_df = (
                             st.session_state.inventory_df
@@ -1211,45 +1308,30 @@ else:
                                 updated_df
                             )
 
+                            st.session_state[
+                                f"confirm_delete_{selected_sno}"
+                            ] = False
+
                             st.success(
-                                "🗑️ Inventory item deleted."
+                                "🗑️ Item deleted successfully."
                             )
 
                             st.rerun()
 
-                    else:
 
-                        st.warning(
-                            "⚠️ Please confirm deletion first."
-                        )
+                with confirm_col2:
 
+                    if st.button(
+                        "❌ Cancel",
+                        key=f"cancel_delete_{selected_sno}",
+                        use_container_width=True
+                    ):
 
-# ==============================================================================
-# USER PERMISSION NOTICE
-# ==============================================================================
+                        st.session_state[
+                            f"confirm_delete_{selected_sno}"
+                        ] = False
 
-if not is_admin:
-
-    st.markdown("---")
-
-    st.info(
-        "👤 **User access:** You can edit existing inventory records "
-        "and adjust stock quantities. Adding, deleting, and administrative "
-        "controls are restricted to the administrator."
-    )
-
-
-# ==============================================================================
-# ADMIN STATUS
-# ==============================================================================
-
-if is_admin:
-
-    st.markdown("---")
-
-    st.success(
-        "👑 Administrator access enabled — full inventory management available."
-    )
+                        st.rerun()
 
 
 # ==============================================================================
@@ -1258,13 +1340,24 @@ if is_admin:
 
 st.markdown("---")
 
+if is_admin:
+
+    st.success(
+        "👑 Admin Portal — Inventory + Application Management"
+    )
+
+else:
+
+    st.info(
+        "👤 User Portal — Inventory Management"
+    )
+
+
 st.caption(
-    "☁️ Inventory data is synchronized with the GitHub repository."
+    "☁️ Inventory data is synchronized with GitHub."
 )
 
 st.caption(
-    f"Total inventory records: "
-    f"{len(st.session_state.inventory_df)}"
+    f"Total inventory records: {len(df)}"
 )
-
 
