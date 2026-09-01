@@ -35,6 +35,11 @@ API_URL = (
 # Token stored securely in Streamlit Secrets
 GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
 
+ADMIN_USERNAME = st.secrets.get("ADMIN_USERNAME", "admin") 
+ADMIN_PASSWORD = st.secrets.get("ADMIN_PASSWORD", "") 
+USER_USERNAME = st.secrets.get("USER_USERNAME", "user") 
+USER_PASSWORD = st.secrets.get("USER_PASSWORD", "")
+
 # Empty/default dataframe columns
 DEFAULT_COLUMNS = [
     "S.No",
