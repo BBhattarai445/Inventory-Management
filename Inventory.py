@@ -221,7 +221,7 @@ def save_to_github(dataframe):
         # ----------------------------------------------------------------------
 
         payload = {
-            "message": "Update inventory via Laserax Inventory Manager",
+            "message": "Update inventory ",
             "content": content_encoded,
             "sha": sha
         }
@@ -418,7 +418,7 @@ st.caption(
 
 st.markdown("---")
 
-st.subheader("➕ Add New Inventory Line Item")
+st.subheader("➕ Add New Item")
 
 add_col1, add_col2, add_col3 = st.columns(3)
 
