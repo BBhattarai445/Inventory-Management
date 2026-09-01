@@ -182,14 +182,12 @@ if not st.session_state.authenticated:
 # ROLE
 # ==============================================================================
 
-is_admin = (
-    st.session_state.role == "admin"
-)
+# ==============================================================================
+# ROLE
+# ==============================================================================
 
-is_user = (
-    st.session_state.role == "user"
-)
-
+is_admin = st.session_state.get("role") == "admin"
+is_user = st.session_state.get("role") == "user"
 
 # ==============================================================================
 # GITHUB HEADERS
