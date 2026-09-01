@@ -557,7 +557,7 @@ else:
     # --------------------------------------------------------------------------
 
     select_options = [
-        f"Row {row['S.No']}:{row['EQUIPMENT']}"
+        f"Row {row['S.No']}: {row['EQUIPMENT']}"
         for _, row in df.iterrows()
     ]
 
