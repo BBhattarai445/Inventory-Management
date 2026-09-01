@@ -542,51 +542,41 @@ with st.sidebar:
     # ======================================================================
     # ADMIN ONLY — MANAGE APP
     # ======================================================================
+# ==============================================================================
+# ADMIN-ONLY MANAGE APP PANEL
+# ==============================================================================
 
-    if is_admin:
+if st.session_state.get("role") == "admin":
 
-        st.markdown("## ⚙️ Manage App")
+    with st.expander("⚙️ Manage App", expanded=False):
 
-        st.caption(
-            "Administrator-only application controls."
+        st.subheader("Application Management")
+
+        st.info(
+            "This section is available only to administrators."
         )
 
+        manage_col1, manage_col2, manage_col3 = st.columns(3)
 
-        st.markdown(
-            """
-            **Admin permissions**
-            
-            • Application management  
-            • Inventory management  
-            • GitHub synchronization  
-            • System controls
-            """
-        )
+        with manage_col1:
+            st.metric("Inventory Records", len(df))
 
+        with manage_col2:
+            total_stock = int(df["STOCK"].sum())
+            st.metric("Total Stock", total_stock)
 
-        st.markdown("---")
-
-
-        if st.button(
-            "🔄 Sync GitHub",
-            use_container_width=True
-        ):
-
-            with st.spinner(
-                "Syncing with GitHub..."
-            ):
-
-                st.session_state.inventory_df = (
-                    load_from_github()
-                )
-
-            st.success(
-                "✅ Inventory synchronized."
+        with manage_col3:
+            unique_equipment = (
+                df["EQUIPMENT"]
+                .astype(str)
+                .nunique()
             )
 
-            st.rerun()
-
-
+            st.metric(
+                "Equipment Types",
+                unique_equipment
+            )
+ 
     # ======================================================================
     # USER — NO MANAGE APP SECTION
     # ======================================================================
