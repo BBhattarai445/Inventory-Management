@@ -182,12 +182,14 @@ if not st.session_state.authenticated:
 # ROLE
 # ==============================================================================
 
-# ==============================================================================
-# ROLE
-# ==============================================================================
+is_admin = (
+    st.session_state.role == "admin"
+)
 
-is_admin = st.session_state.get("role") == "admin"
-is_user = st.session_state.get("role") == "user"
+is_user = (
+    st.session_state.role == "user"
+)
+
 
 # ==============================================================================
 # GITHUB HEADERS
@@ -542,41 +544,51 @@ with st.sidebar:
     # ======================================================================
     # ADMIN ONLY — MANAGE APP
     # ======================================================================
-# ==============================================================================
-# ADMIN-ONLY MANAGE APP PANEL
-# ==============================================================================
 
-if st.session_state.get("role") == "admin":
+    if is_admin:
 
-    with st.expander("⚙️ Manage App", expanded=False):
+        st.markdown("## ⚙️ Manage App")
 
-        st.subheader("Application Management")
-
-        st.info(
-            "This section is available only to administrators."
+        st.caption(
+            "Administrator-only application controls."
         )
 
-        manage_col1, manage_col2, manage_col3 = st.columns(3)
 
-        with manage_col1:
-            st.metric("Inventory Records", len(df))
+        st.markdown(
+            """
+            **Admin permissions**
+            
+            • Application management  
+            • Inventory management  
+            • GitHub synchronization  
+            • System controls
+            """
+        )
 
-        with manage_col2:
-            total_stock = int(df["STOCK"].sum())
-            st.metric("Total Stock", total_stock)
 
-        with manage_col3:
-            unique_equipment = (
-                df["EQUIPMENT"]
-                .astype(str)
-                .nunique()
+        st.markdown("---")
+
+
+        if st.button(
+            "🔄 Sync GitHub",
+            use_container_width=True
+        ):
+
+            with st.spinner(
+                "Syncing with GitHub..."
+            ):
+
+                st.session_state.inventory_df = (
+                    load_from_github()
+                )
+
+            st.success(
+                "✅ Inventory synchronized."
             )
 
-            st.metric(
-                "Equipment Types",
-                unique_equipment
-            )
- 
+            st.rerun()
+
+
     # ======================================================================
     # USER — NO MANAGE APP SECTION
     # ======================================================================
