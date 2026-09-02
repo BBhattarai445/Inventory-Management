@@ -103,7 +103,6 @@ def show_company_logo(width=200):
             st.image(logo_path, width=width)
 
 with title_col:
-    show_company_logo(width=180)
     st.title("Laserax Inventory Manager")
 
     if is_admin:
