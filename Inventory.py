@@ -803,11 +803,6 @@ st.markdown("---")
 
 st.subheader("📋 Current Stock Inventory")
 
-st.info(
-    "✏️ You can edit Stock, Location, Remarks, Project/Part No., "
-    "and other fields directly in the table. Click Save Changes when finished."
-)
-
 # Create editable copy
 editable_df = display_df.copy()
 
