@@ -93,14 +93,17 @@ if "inventory_df" not in st.session_state:
 # ==============================================================================
 # LOGIN PAGE
 # ==============================================================================
+def show_company_logo(width=200):
+    logo_path = "Picture1.png"
 
-def login_page():
-    logo_col, title_col = st.columns([1, 5])
+    if os.path.exists(logo_path):
+        col1, col2, col3 = st.columns([1, 2, 1])
 
-with logo_col:
-    st.image("Picture1.png", width=150)
+        with col2:
+            st.image(logo_path, width=width)
 
 with title_col:
+    show_company_logo(width=180)
     st.title("Laserax Inventory Manager")
 
     if is_admin:
