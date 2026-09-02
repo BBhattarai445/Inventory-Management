@@ -9,18 +9,7 @@ import requests
 # ==============================================================================
 # PAGE CONFIG
 # ==============================================================================
-logo_col, title_col = st.columns([1, 5])
 
-with logo_col:
-    st.image("Picture1.png", width=150)
-
-with title_col:
-    st.title("Laserax Inventory Manager")
-
-    if is_admin:
-        st.caption("👑 Administrator Portal")
-    else:
-        st.caption("👤 Inventory User Portal")
 st.set_page_config(
     page_title="Laserax Inventory Manager",
     page_icon="🏭",
@@ -106,6 +95,18 @@ if "inventory_df" not in st.session_state:
 # ==============================================================================
 
 def login_page():
+    logo_col, title_col = st.columns([1, 5])
+
+with logo_col:
+    st.image("Picture1.png", width=150)
+
+with title_col:
+    st.title("Laserax Inventory Manager")
+
+    if is_admin:
+        st.caption("👑 Administrator Portal")
+    else:
+        st.caption("👤 Inventory User Portal")
 
     st.title("🏭 Laserax Inventory Manager")
 
