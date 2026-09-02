@@ -815,20 +815,27 @@ st.markdown("---")
 st.subheader("📋 Current Stock Inventory")
 
 
+# Create a separate clickable procurement icon column
+table_df = display_df.copy()
+
+table_df["🔗"] = table_df["PROCUREMENT LINK"].apply(
+    lambda x: x if pd.notna(x) and str(x).strip() else ""
+)
+
+# Put the icon column next to the procurement information
 st.dataframe(
-    display_df,
+    table_df,
     use_container_width=True,
     hide_index=True,
     column_config={
-        "PROCUREMENT LINK": st.column_config.LinkColumn(
-            "Procurement",
+        "🔗": st.column_config.LinkColumn(
+            "Website",
             display_text=":material/open_in_new:",
-            help="Open procurement website",
             width="small",
-        )
+        ),
+        "PROCUREMENT LINK": None,
     }
 )
-
 
 st.caption(
     f"Showing {len(display_df)} of {len(df)} records."
