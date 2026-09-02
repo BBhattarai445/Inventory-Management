@@ -795,155 +795,213 @@ else:
 # INVENTORY TABLE
 # ==============================================================================
 
+# ==============================================================================
+# INVENTORY TABLE - EDITABLE
+# ==============================================================================
+
 st.markdown("---")
 
 st.subheader("📋 Current Stock Inventory")
 
-
-# Create a separate clickable procurement icon column
-table_df = display_df.copy()
-
-table_df["🔗"] = table_df["PROCUREMENT LINK"].apply(
-    lambda x: x if pd.notna(x) and str(x).strip() else ""
+st.info(
+    "✏️ You can edit Stock, Location, Remarks, Project/Part No., "
+    "and other fields directly in the table. Click Save Changes when finished."
 )
 
-# Put the icon column next to the procurement information
-st.dataframe(
-    table_df,
+# Create editable copy
+editable_df = display_df.copy()
+
+# Keep original index so we know which rows were changed
+editable_df["_original_index"] = editable_df.index
+
+# Editable inventory table
+edited_df = st.data_editor(
+    editable_df.drop(columns=["_original_index"]),
     use_container_width=True,
     hide_index=True,
+    num_rows="fixed",
+
     column_config={
-        "🔗": st.column_config.LinkColumn(
-            "Website",
-            display_text=":material/open_in_new:",
-            width="small",
+
+        "S.No": st.column_config.NumberColumn(
+            "S.No",
+            disabled=True,
+            width="small"
         ),
-        "PROCUREMENT LINK": None,
-    }
-)
 
-st.caption(
-    f"Showing {len(display_df)} of {len(df)} records."
+        "EQUIPMENT": st.column_config.TextColumn(
+            "Equipment",
+            required=True
+        ),
+
+        "LASERAX PROJECT No. - Part NO": st.column_config.TextColumn(
+            "Project / Part No."
+        ),
+
+        "STOCK": st.column_config.NumberColumn(
+            "Stock",
+            min_value=0,
+            step=1
+        ),
+
+        "LOCATION": st.column_config.TextColumn(
+            "Location"
+        ),
+
+        "REMARKS": st.column_config.TextColumn(
+            "Remarks"
+        ),
+
+        "PROCUREMENT LINK": st.column_config.LinkColumn(
+            "Procurement Link"
+        )
+    },
+
+    disabled=["S.No"],
+
+    key="inventory_editor"
 )
 
 
 # ==============================================================================
-# ADD INVENTORY
-# ADMIN + USER
+# SAVE TABLE CHANGES
 # ==============================================================================
-
-st.markdown("---")
-
-st.subheader("➕ Add New Inventory Item")
-
-
-add_col1, add_col2, add_col3 = st.columns(3)
-
-
-with add_col1:
-
-    add_eq = st.text_input(
-        "Equipment Name",
-        key="add_equipment"
-    )
-
-
-with add_col2:
-
-    add_proj = st.text_input(
-        "Project / Part No.",
-        key="add_project"
-    )
-
-
-with add_col3:
-
-    add_stock = st.number_input(
-        "Stock",
-        min_value=0,
-        value=0,
-        step=1,
-        key="add_stock"
-    )
-
-
-add_col4, add_col5, add_col6 = st.columns(3)
-
-
-with add_col4:
-
-    add_loc = st.text_input(
-        "Location",
-        key="add_location"
-    )
-
-
-with add_col5:
-
-    add_rem = st.text_input(
-        "Remarks",
-        key="add_remarks"
-    )
-
-
-with add_col6:
-
-    add_link = st.text_input(
-        "Procurement Link",
-        key="add_link"
-    )
-
 
 if st.button(
-    "💾 Add Inventory Item",
+    "💾 Save Table Changes",
     type="primary",
     use_container_width=True
 ):
 
-    if not add_eq.strip():
+    updated_df = st.session_state.inventory_df.copy()
 
-        st.error(
-            "❌ Equipment Name is required."
+    # --------------------------------------------------------------------------
+    # Update rows from the edited table
+    # --------------------------------------------------------------------------
+
+    for position, edited_row in edited_df.iterrows():
+
+        # Get corresponding original row
+        original_index = display_df.index[position]
+
+        # Equipment
+        if pd.isna(edited_row["EQUIPMENT"]):
+
+            st.error(
+                f"❌ Equipment name cannot be empty for row "
+                f"{edited_row['S.No']}."
+            )
+
+            st.stop()
+
+        updated_df.at[
+            original_index,
+            "EQUIPMENT"
+        ] = str(
+            edited_row["EQUIPMENT"]
+        ).strip()
+
+
+        # Project / Part No.
+        updated_df.at[
+            original_index,
+            "LASERAX PROJECT No. - Part NO"
+        ] = (
+            ""
+            if pd.isna(
+                edited_row[
+                    "LASERAX PROJECT No. - Part NO"
+                ]
+            )
+            else str(
+                edited_row[
+                    "LASERAX PROJECT No. - Part NO"
+                ]
+            ).strip()
         )
 
-    else:
 
-        new_row = pd.DataFrame([{
+        # Stock
+        stock_value = pd.to_numeric(
+            edited_row["STOCK"],
+            errors="coerce"
+        )
 
-            "S.No":
-                len(df) + 1,
+        if pd.isna(stock_value):
 
-            "EQUIPMENT":
-                add_eq.strip(),
+            stock_value = 0
 
-            "LASERAX PROJECT No. - Part NO":
-                add_proj.strip(),
-
-            "STOCK":
-                int(add_stock),
-
-            "LOCATION":
-                add_loc.strip(),
-
-            "REMARKS":
-                add_rem.strip(),
-
-            "PROCUREMENT LINK":
-                add_link.strip()
-        }])
-
-
-        updated_df = pd.concat(
-            [df, new_row],
-            ignore_index=True
+        updated_df.at[
+            original_index,
+            "STOCK"
+        ] = max(
+            0,
+            int(stock_value)
         )
 
 
-        updated_df["S.No"] = range(
-            1,
-            len(updated_df) + 1
+        # Location
+        updated_df.at[
+            original_index,
+            "LOCATION"
+        ] = (
+            ""
+            if pd.isna(
+                edited_row["LOCATION"]
+            )
+            else str(
+                edited_row["LOCATION"]
+            ).strip()
         )
 
+
+        # Remarks
+        updated_df.at[
+            original_index,
+            "REMARKS"
+        ] = (
+            ""
+            if pd.isna(
+                edited_row["REMARKS"]
+            )
+            else str(
+                edited_row["REMARKS"]
+            ).strip()
+        )
+
+
+        # Procurement Link
+        updated_df.at[
+            original_index,
+            "PROCUREMENT LINK"
+        ] = (
+            ""
+            if pd.isna(
+                edited_row["PROCUREMENT LINK"]
+            )
+            else str(
+                edited_row["PROCUREMENT LINK"]
+            ).strip()
+        )
+
+
+    # --------------------------------------------------------------------------
+    # Rebuild serial numbers
+    # --------------------------------------------------------------------------
+
+    updated_df["S.No"] = range(
+        1,
+        len(updated_df) + 1
+    )
+
+
+    # --------------------------------------------------------------------------
+    # Save to GitHub
+    # --------------------------------------------------------------------------
+
+    with st.spinner(
+        "Saving changes to GitHub..."
+    ):
 
         if save_to_github(
             updated_df
@@ -954,10 +1012,15 @@ if st.button(
             )
 
             st.success(
-                "✅ Inventory item added successfully."
+                "✅ Inventory table changes saved successfully!"
             )
 
             st.rerun()
+
+
+st.caption(
+    f"Showing {len(display_df)} of {len(df)} records."
+)
 
 
 # ==============================================================================
