@@ -94,7 +94,7 @@ if "inventory_df" not in st.session_state:
 # LOGIN PAGE
 # ==============================================================================
 def show_company_logo(width=200):
-    logo_path = "Picture1.png"
+    logo_path = r"https://github.com/BBhattarai445/Inventory-Management/blob/main/Picture1.png"
 
     if os.path.exists(logo_path):
         col1, col2, col3 = st.columns([1, 2, 1])
