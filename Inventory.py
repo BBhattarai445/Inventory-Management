@@ -1016,27 +1016,33 @@ if st.button(
 st.caption(
     f"Showing {len(display_df)} of {len(df)} records."
 )
-
-
 # ==============================================================================
-# EDIT / DELETE INVENTORY
-# ADMIN + USER
+# REMOVE INVENTORY ITEM
 # ==============================================================================
 
 st.markdown("---")
 
-st.subheader("✏️ Manage Inventory")
+st.subheader("➖ Remove Inventory Item")
+
+st.warning(
+    "⚠️ Removing an inventory item will permanently delete it from the "
+    "inventory and synchronize the change with GitHub."
+)
 
 
 if len(df) == 0:
 
     st.info(
-        "No inventory records available."
+        "No inventory records available to remove."
     )
 
 else:
 
-    options = [
+    # --------------------------------------------------------------------------
+    # Select item
+    # --------------------------------------------------------------------------
+
+    remove_options = [
 
         f"Row {row['S.No']}: {row['EQUIPMENT']}"
 
@@ -1044,341 +1050,144 @@ else:
     ]
 
 
-    selected = st.selectbox(
-        "Select inventory record",
-        options
+    remove_selected = st.selectbox(
+        "Select inventory item to remove",
+        remove_options,
+        key="remove_inventory_select"
     )
 
 
-    selected_sno = int(
-        selected
+    # Get selected S.No
+    remove_sno = int(
+        remove_selected
         .split(": ")[0]
         .replace("Row ", "")
         .strip()
     )
 
 
-    matching = df[
-        df["S.No"] == selected_sno
+    # Find actual dataframe row
+    remove_matching = df[
+        df["S.No"] == remove_sno
     ]
 
 
-    if len(matching) > 0:
+    if len(remove_matching) > 0:
 
-        row_idx = matching.index[0]
+        remove_row_idx = remove_matching.index[0]
 
-        current = df.loc[row_idx]
-
-
-        # ==================================================================
-        # EDIT FIELDS
-        # ==================================================================
-
-        edit_col1, edit_col2, edit_col3 = st.columns(3)
+        remove_current = df.loc[
+            remove_row_idx
+        ]
 
 
-        with edit_col1:
+        # Show information about selected item
 
-            edit_eq = st.text_input(
-                "Equipment Name",
-                value=str(
-                    current["EQUIPMENT"]
-                ),
-                key=f"edit_eq_{selected_sno}"
+        remove_col1, remove_col2, remove_col3 = st.columns(3)
+
+
+        with remove_col1:
+
+            st.metric(
+                "Equipment",
+                str(
+                    remove_current["EQUIPMENT"]
+                )
             )
 
 
-        with edit_col2:
+        with remove_col2:
 
-            edit_proj = st.text_input(
-                "Project / Part No.",
-                value=str(
-                    current[
-                        "LASERAX PROJECT No. - Part NO"
-                    ]
-                ),
-                key=f"edit_proj_{selected_sno}"
-            )
-
-
-        with edit_col3:
-
-            edit_stock = st.number_input(
+            st.metric(
                 "Stock",
-                min_value=0,
-                value=int(
-                    current["STOCK"]
-                ),
-                step=1,
-                key=f"edit_stock_{selected_sno}"
+                int(
+                    remove_current["STOCK"]
+                )
             )
 
 
-        edit_col4, edit_col5, edit_col6 = st.columns(3)
+        with remove_col3:
 
-
-        with edit_col4:
-
-            edit_loc = st.text_input(
+            st.metric(
                 "Location",
-                value=str(
-                    current["LOCATION"]
-                ),
-                key=f"edit_loc_{selected_sno}"
-            )
-
-
-        with edit_col5:
-
-            edit_rem = st.text_input(
-                "Remarks",
-                value=str(
-                    current["REMARKS"]
-                ),
-                key=f"edit_rem_{selected_sno}"
-            )
-
-
-        with edit_col6:
-
-            edit_link = st.text_input(
-                "Procurement Link",
-                value=str(
-                    current["PROCUREMENT LINK"]
-                ),
-                key=f"edit_link_{selected_sno}"
-            )
-
-
-        # ==================================================================
-        # ACTION BUTTONS
-        # ==================================================================
-
-        action1, action2, action3, action4 = st.columns(4)
-
-
-        # ==================================================================
-        # INCREASE
-        # ==================================================================
-
-        with action1:
-
-            if st.button(
-                "➕ Increase Stock",
-                use_container_width=True
-            ):
-
-                updated_df = (
-                    st.session_state.inventory_df.copy()
+                str(
+                    remove_current["LOCATION"]
                 )
+            )
 
 
-                updated_df.at[
-                    row_idx,
-                    "STOCK"
-                ] = (
-                    int(
-                        updated_df.at[
-                            row_idx,
-                            "STOCK"
-                        ]
-                    ) + 1
-                )
+        st.markdown("---")
 
 
-                if save_to_github(
-                    updated_df
+        # ----------------------------------------------------------------------
+        # Confirmation
+        # ----------------------------------------------------------------------
+
+        confirm_key = (
+            f"confirm_remove_{remove_sno}"
+        )
+
+
+        if st.button(
+            "🗑️ Remove Selected Inventory",
+            type="primary",
+            use_container_width=True
+        ):
+
+            st.session_state[
+                confirm_key
+            ] = True
+
+
+        if st.session_state.get(
+            confirm_key,
+            False
+        ):
+
+            st.error(
+                f"⚠️ You are about to permanently remove "
+                f"**{remove_current['EQUIPMENT']}** from inventory."
+            )
+
+
+            confirm_col1, confirm_col2 = st.columns(2)
+
+
+            with confirm_col1:
+
+                if st.button(
+                    "✅ Yes, Remove Item",
+                    key=f"confirm_yes_{remove_sno}",
+                    type="primary",
+                    use_container_width=True
                 ):
 
-                    st.session_state.inventory_df = (
-                        updated_df
-                    )
-
-                    st.success(
-                        "✅ Stock increased."
-                    )
-
-                    st.rerun()
-
-
-        # ==================================================================
-        # DECREASE
-        # ==================================================================
-
-        with action2:
-
-            if st.button(
-                "➖ Decrease Stock",
-                use_container_width=True
-            ):
-
-                updated_df = (
-                    st.session_state.inventory_df.copy()
-                )
-
-
-                current_stock = int(
-                    updated_df.at[
-                        row_idx,
-                        "STOCK"
-                    ]
-                )
-
-
-                if current_stock > 0:
-
-                    updated_df.at[
-                        row_idx,
-                        "STOCK"
-                    ] = current_stock - 1
-
-
-                    if save_to_github(
-                        updated_df
-                    ):
-
-                        st.session_state.inventory_df = (
-                            updated_df
-                        )
-
-                        st.success(
-                            "✅ Stock decreased."
-                        )
-
-                        st.rerun()
-
-                else:
-
-                    st.warning(
-                        "⚠️ Stock is already 0."
-                    )
-
-
-        # ==================================================================
-        # SAVE
-        # ==================================================================
-
-        with action3:
-
-            if st.button(
-                "💾 Save Changes",
-                type="primary",
-                use_container_width=True
-            ):
-
-                if not edit_eq.strip():
-
-                    st.error(
-                        "❌ Equipment Name is required."
-                    )
-
-                else:
-
+                    # Remove selected row
                     updated_df = (
-                        st.session_state.inventory_df.copy()
+                        st.session_state.inventory_df
+                        .drop(index=remove_row_idx)
+                        .reset_index(drop=True)
                     )
 
 
-                    updated_df.at[
-                        row_idx,
-                        "EQUIPMENT"
-                    ] = edit_eq.strip()
+                    # Rebuild S.No
+                    updated_df["S.No"] = range(
+                        1,
+                        len(updated_df) + 1
+                    )
 
 
-                    updated_df.at[
-                        row_idx,
-                        "LASERAX PROJECT No. - Part NO"
-                    ] = edit_proj.strip()
+                    # Make sure stock stays numeric
+                    updated_df["STOCK"] = pd.to_numeric(
+                        updated_df["STOCK"],
+                        errors="coerce"
+                    ).fillna(0).astype(int)
 
 
-                    updated_df.at[
-                        row_idx,
-                        "STOCK"
-                    ] = int(edit_stock)
-
-
-                    updated_df.at[
-                        row_idx,
-                        "LOCATION"
-                    ] = edit_loc.strip()
-
-
-                    updated_df.at[
-                        row_idx,
-                        "REMARKS"
-                    ] = edit_rem.strip()
-
-
-                    updated_df.at[
-                        row_idx,
-                        "PROCUREMENT LINK"
-                    ] = edit_link.strip()
-
-
-                    if save_to_github(
-                        updated_df
+                    # Save to GitHub
+                    with st.spinner(
+                        "Removing inventory item..."
                     ):
-
-                        st.session_state.inventory_df = (
-                            updated_df
-                        )
-
-                        st.success(
-                            "✅ Changes saved."
-                        )
-
-                        st.rerun()
-
-
-        # ==================================================================
-        # DELETE
-        # ==================================================================
-
-        with action4:
-
-            if st.button(
-                "🗑️ Delete Item",
-                use_container_width=True
-            ):
-
-                st.session_state[
-                    f"confirm_delete_{selected_sno}"
-                ] = True
-
-
-            if st.session_state.get(
-                f"confirm_delete_{selected_sno}",
-                False
-            ):
-
-                st.warning(
-                    "⚠️ Are you sure you want to delete this item?"
-                )
-
-
-                confirm_col1, confirm_col2 = st.columns(2)
-
-
-                with confirm_col1:
-
-                    if st.button(
-                        "✅ Yes, Delete",
-                        key=f"yes_delete_{selected_sno}",
-                        use_container_width=True
-                    ):
-
-                        updated_df = (
-                            st.session_state.inventory_df
-                            .drop(index=row_idx)
-                            .reset_index(drop=True)
-                        )
-
-
-                        updated_df["S.No"] = range(
-                            1,
-                            len(updated_df) + 1
-                        )
-
 
                         if save_to_github(
                             updated_df
@@ -1389,29 +1198,30 @@ else:
                             )
 
                             st.session_state[
-                                f"confirm_delete_{selected_sno}"
+                                confirm_key
                             ] = False
 
                             st.success(
-                                "🗑️ Item deleted successfully."
+                                "🗑️ Inventory item removed successfully."
                             )
 
                             st.rerun()
 
 
-                with confirm_col2:
+            with confirm_col2:
 
-                    if st.button(
-                        "❌ Cancel",
-                        key=f"cancel_delete_{selected_sno}",
-                        use_container_width=True
-                    ):
+                if st.button(
+                    "❌ Cancel",
+                    key=f"confirm_no_{remove_sno}",
+                    use_container_width=True
+                ):
 
-                        st.session_state[
-                            f"confirm_delete_{selected_sno}"
-                        ] = False
+                    st.session_state[
+                        confirm_key
+                    ] = False
 
-                        st.rerun()
+                    st.rerun()
+
 
 
 # ==============================================================================
