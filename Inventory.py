@@ -111,7 +111,7 @@ with title_col:
     else:
         st.caption("👤 Inventory User Portal")
 
-    st.title(st.image( "Laserax Inventory Manager")
+    st.title("Laserax Inventory Manager")
 
     st.markdown("---")
 
