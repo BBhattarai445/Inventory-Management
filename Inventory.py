@@ -539,22 +539,17 @@ with st.sidebar:
     st.markdown("## 👤 Account")
 
     if is_admin:
-
         st.success(
             f"👑 **Administrator**\n\n"
             f"{st.session_state.username}"
         )
-
     else:
-
         st.info(
             f"👤 **Inventory User**\n\n"
             f"{st.session_state.username}"
         )
 
-
     st.markdown("---")
-
 
     # ======================================================================
     # ADMIN ONLY — MANAGE APP
