@@ -1016,6 +1016,368 @@ if st.button(
 st.caption(
     f"Showing {len(display_df)} of {len(df)} records."
 )
+
+# ==============================================================================
+# ADD INVENTORY ITEM
+# ==============================================================================
+
+st.markdown("---")
+
+st.subheader("➕ Add Inventory Item")
+
+st.info(
+    "Add a new inventory record below. "
+    "The new item will be added to the Excel inventory and synchronized with GitHub."
+)
+
+
+add_col1, add_col2, add_col3 = st.columns(3)
+
+
+with add_col1:
+
+    add_eq = st.text_input(
+        "Equipment Name",
+        key="add_equipment"
+    )
+
+
+with add_col2:
+
+    add_proj = st.text_input(
+        "Project / Part No.",
+        key="add_project"
+    )
+
+
+with add_col3:
+
+    add_stock = st.number_input(
+        "Stock",
+        min_value=0,
+        value=0,
+        step=1,
+        key="add_stock"
+    )
+
+
+add_col4, add_col5, add_col6 = st.columns(3)
+
+
+with add_col4:
+
+    add_loc = st.text_input(
+        "Location",
+        key="add_location"
+    )
+
+
+with add_col5:
+
+    add_rem = st.text_input(
+        "Remarks",
+        key="add_remarks"
+    )
+
+
+with add_col6:
+
+    add_link = st.text_input(
+        "Procurement Link",
+        key="add_link"
+    )
+
+
+if st.button(
+    "💾 Add Inventory Item",
+    type="primary",
+    use_container_width=True
+):
+
+    if not add_eq.strip():
+
+        st.error(
+            "❌ Equipment Name is required."
+        )
+
+    else:
+
+        # Create new inventory row
+        new_row = pd.DataFrame([{
+
+            "S.No":
+                len(df) + 1,
+
+            "EQUIPMENT":
+                add_eq.strip(),
+
+            "LASERAX PROJECT No. - Part NO":
+                add_proj.strip(),
+
+            "STOCK":
+                int(add_stock),
+
+            "LOCATION":
+                add_loc.strip(),
+
+            "REMARKS":
+                add_rem.strip(),
+
+            "PROCUREMENT LINK":
+                add_link.strip()
+
+        }])
+
+
+        # Add new row to existing inventory
+        updated_df = pd.concat(
+            [
+                st.session_state.inventory_df,
+                new_row
+            ],
+            ignore_index=True
+        )
+
+
+        # Rebuild S.No
+        updated_df["S.No"] = range(
+            1,
+            len(updated_df) + 1
+        )
+
+
+        # Make stock numeric
+        updated_df["STOCK"] = pd.to_numeric(
+            updated_df["STOCK"],
+            errors="coerce"
+        ).fillna(0).astype(int)
+
+
+        # Save to GitHub
+        with st.spinner(
+            "Adding inventory item..."
+        ):
+
+            if save_to_github(
+                updated_df
+            ):
+
+                st.session_state.inventory_df = (
+                    updated_df
+                )
+
+                st.success(
+                    "✅ New inventory item added successfully!"
+                )
+
+                st.rerun()
+
+
+# ==============================================================================
+# REMOVE INVENTORY ITEM
+# ==============================================================================
+
+st.markdown("---")
+
+st.subheader("➖ Remove Inventory Item")
+
+st.warning(
+    "⚠️ Removing an item will permanently delete it from the inventory."
+)
+
+
+if len(df) == 0:
+
+    st.info(
+        "No inventory records available."
+    )
+
+else:
+
+    # --------------------------------------------------------------------------
+    # Select inventory item
+    # --------------------------------------------------------------------------
+
+    remove_options = [
+
+        f"Row {row['S.No']}: {row['EQUIPMENT']}"
+
+        for _, row in df.iterrows()
+
+    ]
+
+
+    remove_selected = st.selectbox(
+        "Select inventory item to remove",
+        remove_options,
+        key="remove_inventory_select"
+    )
+
+
+    # Get selected S.No
+    remove_sno = int(
+        remove_selected
+        .split(": ")[0]
+        .replace("Row ", "")
+        .strip()
+    )
+
+
+    # Find selected row
+    remove_matching = df[
+        df["S.No"] == remove_sno
+    ]
+
+
+    if len(remove_matching) > 0:
+
+        remove_row_idx = remove_matching.index[0]
+
+        remove_current = df.loc[
+            remove_row_idx
+        ]
+
+
+        # Show selected item information
+
+        remove_col1, remove_col2, remove_col3 = st.columns(3)
+
+
+        with remove_col1:
+
+            st.metric(
+                "Equipment",
+                str(
+                    remove_current["EQUIPMENT"]
+                )
+            )
+
+
+        with remove_col2:
+
+            st.metric(
+                "Stock",
+                int(
+                    remove_current["STOCK"]
+                )
+            )
+
+
+        with remove_col3:
+
+            st.metric(
+                "Location",
+                str(
+                    remove_current["LOCATION"]
+                )
+            )
+
+
+        # ----------------------------------------------------------------------
+        # Remove button
+        # ----------------------------------------------------------------------
+
+        confirm_key = (
+            f"confirm_remove_{remove_sno}"
+        )
+
+
+        if st.button(
+            "🗑️ Remove Selected Inventory",
+            type="primary",
+            use_container_width=True
+        ):
+
+            st.session_state[
+                confirm_key
+            ] = True
+
+
+        # ----------------------------------------------------------------------
+        # Confirmation
+        # ----------------------------------------------------------------------
+
+        if st.session_state.get(
+            confirm_key,
+            False
+        ):
+
+            st.error(
+                f"⚠️ You are about to remove "
+                f"**{remove_current['EQUIPMENT']}**."
+            )
+
+
+            confirm_col1, confirm_col2 = st.columns(2)
+
+
+            with confirm_col1:
+
+                if st.button(
+                    "✅ Yes, Remove Item",
+                    key=f"confirm_yes_{remove_sno}",
+                    type="primary",
+                    use_container_width=True
+                ):
+
+                    updated_df = (
+                        st.session_state.inventory_df
+                        .drop(index=remove_row_idx)
+                        .reset_index(drop=True)
+                    )
+
+
+                    # Rebuild S.No
+                    updated_df["S.No"] = range(
+                        1,
+                        len(updated_df) + 1
+                    )
+
+
+                    # Make stock numeric
+                    updated_df["STOCK"] = pd.to_numeric(
+                        updated_df["STOCK"],
+                        errors="coerce"
+                    ).fillna(0).astype(int)
+
+
+                    # Save to GitHub
+                    with st.spinner(
+                        "Removing inventory item..."
+                    ):
+
+                        if save_to_github(
+                            updated_df
+                        ):
+
+                            st.session_state.inventory_df = (
+                                updated_df
+                            )
+
+                            st.session_state[
+                                confirm_key
+                            ] = False
+
+                            st.success(
+                                "🗑️ Inventory item removed successfully."
+                            )
+
+                            st.rerun()
+
+
+            with confirm_col2:
+
+                if st.button(
+                    "❌ Cancel",
+                    key=f"confirm_cancel_{remove_sno}",
+                    use_container_width=True
+                ):
+
+                    st.session_state[
+                        confirm_key
+                    ] = False
+
+                    st.rerun()
 # ==============================================================================
 # REMOVE INVENTORY ITEM
 # ==============================================================================
