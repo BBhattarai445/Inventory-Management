@@ -818,7 +818,15 @@ st.subheader("📋 Current Stock Inventory")
 st.dataframe(
     display_df,
     use_container_width=True,
-    hide_index=True
+    hide_index=True,
+    column_config={
+        "PROCUREMENT LINK": st.column_config.LinkColumn(
+            "Procurement",
+            display_text=":material/open_in_new:",
+            help="Open procurement website",
+            width="small",
+        )
+    }
 )
 
 
