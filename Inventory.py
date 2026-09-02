@@ -12,7 +12,7 @@ import requests
 
 st.set_page_config(
     page_title="Laserax Inventory Manager",
-    page_icon="🏭",
+    page_icon= st.image("Picture1.png", width=150),
     layout="wide"
 )
 
