@@ -17,10 +17,6 @@ st.set_page_config(
     page_icon=str(LOGO_PATH),
     layout="wide"
 )
-st.markdown(
-    "<h1 style='text-align: center;'>Inventory Manager</h1>",
-    unsafe_allow_html=True
-)
 
 col1, col2, col3 = st.columns([1, 2, 1])
 
