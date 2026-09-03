@@ -1,3 +1,4 @@
+streamlit==<your-tested-version>
 pandas
 openpyxl
 requests
