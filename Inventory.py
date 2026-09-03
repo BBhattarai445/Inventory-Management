@@ -10,7 +10,7 @@ import requests
 # PAGE CONFIG
 # ==============================================================================
 
-OGO_PATH = Path(__file__).parent / "LaseaxLogo.png"
+LOGO_PATH = Path(__file__).parent / "LaseaxLogo.png"
 
 st.set_page_config(
     page_title="Inventory Manager",
