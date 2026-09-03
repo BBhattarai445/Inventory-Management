@@ -13,7 +13,7 @@ import requests
 LOGO_PATH = Path(__file__).parent / "Picture1.png"
 
 st.set_page_config(
-    page_title="Inventory Manager",
+    page_title="Laserax Inventory Manager",
     page_icon=str(LOGO_PATH),
     layout="wide"
 )
