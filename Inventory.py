@@ -96,7 +96,8 @@ if "inventory_df" not in st.session_state:
 
 
 def login_page(): 
-    st.title("🏭 Laserax Inventory Manager")
+    page_icon= "Picture1.png",
+    st.title(" Laserax Inventory Manager")
 
     st.markdown("---")
 
