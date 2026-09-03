@@ -1,4 +1,4 @@
-
+from pathlib import Path
 import streamlit as st
 import pandas as pd
 import io
@@ -10,9 +10,11 @@ import requests
 # PAGE CONFIG
 # ==============================================================================
 
+OGO_PATH = Path(__file__).parent / "LaseaxLogo.png"
+
 st.set_page_config(
-    page_title="Laserax Inventory Manager",
-    page_icon= "Picture1.png",
+    page_title="Inventory Manager",
+    page_icon=str(LOGO_PATH),
     layout="wide"
 )
 
