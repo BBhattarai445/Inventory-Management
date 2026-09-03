@@ -4,6 +4,7 @@ import pandas as pd
 import io
 import base64
 import requests
+import base64
 
 
 # ==============================================================================
@@ -18,10 +19,17 @@ st.set_page_config(
     layout="wide"
 )
 
-col1, col2, col3 = st.columns([1, 2, 1])
+with open("Picture1.png", "rb") as f:
+    logo = base64.b64encode(f.read()).decode()
 
-with col2:
-    st.image("Picture1.png", width=450)
+st.markdown(
+    f"""
+    <div style="display: flex; justify-content: center; width: 100%;">
+        <img src="data:image/png;base64,{logo}" style="width: 500px;">
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 
 # ==============================================================================
