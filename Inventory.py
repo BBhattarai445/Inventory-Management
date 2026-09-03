@@ -25,7 +25,7 @@ st.markdown(
 col1, col2, col3 = st.columns([1, 2, 1])
 
 with col2:
-    st.image("Picture1.png", use_container_width=True)
+    st.image("Picture1.png", width=450)
 
 
 # ==============================================================================
