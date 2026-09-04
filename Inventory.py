@@ -1064,20 +1064,6 @@ else:
 # FOOTER
 # ==============================================================================
 
-st.markdown("---")
-
-if is_admin:
-
-    st.success(
-        "👑 Admin Portal — Inventory + Application Management"
-    )
-
-else:
-
-    st.info(
-        "👤 User Portal — Inventory Management"
-    )
-
 
 st.caption(
     "☁️ Inventory data is synchronized with GitHub."
