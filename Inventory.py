@@ -206,18 +206,6 @@ is_user = (
     st.session_state.role == "user"
 )
 
-if not is_admin:
-    st.markdown(
-        """
-        <style>
-        [data-testid="stAppDeployButton"] {
-            display: none !important;
-        }
-        </style>
-        """,
-        unsafe_allow_html=True
-    )
-
 
 # ==============================================================================
 # GITHUB HEADERS
