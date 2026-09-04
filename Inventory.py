@@ -30,7 +30,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-st.title("🏭 Laserax Inventory Manager")
+st.title("🏭 Laserax GmbH Inventory Manager")
 
 # ==============================================================================
 # GITHUB CONFIGURATION
