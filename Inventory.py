@@ -485,7 +485,9 @@ else:
 st.markdown("---")
 
 st.subheader("📋 Current Stock Inventory")
-
+st.warning(
+    "⚠️ Can be edited simply clicking in the item"
+)
 # Create editable copy
 editable_df = display_df.copy()
 
