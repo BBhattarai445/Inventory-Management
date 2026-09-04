@@ -12,7 +12,7 @@ import requests
 # ==============================================================================
 
 LOGO_PATH = Path(__file__).parent / "Picture1.png"
-st.title("🏭 Laserax Inventory Manager")
+
 st.set_page_config(
     page_title="Laserax Inventory Manager",
     page_icon=str(LOGO_PATH),
@@ -30,7 +30,7 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
+st.title("🏭 Laserax Inventory Manager")
 
 # ==============================================================================
 # GITHUB CONFIGURATION
