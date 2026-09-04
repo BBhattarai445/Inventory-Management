@@ -478,6 +478,9 @@ else:
 # ==============================================================================
 # INVENTORY TABLE - EDITABLE
 # ==============================================================================
+# ==============================================================================
+# INVENTORY TABLE - EDITABLE
+# ==============================================================================
 
 st.markdown("---")
 
@@ -486,12 +489,9 @@ st.subheader("📋 Current Stock Inventory")
 # Create editable copy
 editable_df = display_df.copy()
 
-# Keep original index so we know which rows were changed
-editable_df["_original_index"] = editable_df.index
-
 # Editable inventory table
 edited_df = st.data_editor(
-    editable_df.drop(columns=["_original_index"]),
+    editable_df,
     use_container_width=True,
     hide_index=True,
     num_rows="fixed",
@@ -534,7 +534,7 @@ edited_df = st.data_editor(
 
     disabled=["S.No"],
 
-    key="inventory_editor"
+    key=f"inventory_editor_{search_query}"
 )
 
 
@@ -554,12 +554,26 @@ if st.button(
     # Update rows from the edited table
     # --------------------------------------------------------------------------
 
-    for position, edited_row in edited_df.iterrows():
+    for _, edited_row in edited_df.iterrows():
 
-        # Get corresponding original row
-        original_index = display_df.index[position]
+        # Find original row using S.No
+        matching_indices = updated_df.index[
+            updated_df["S.No"] == edited_row["S.No"]
+        ]
 
+        if len(matching_indices) == 0:
+            st.error(
+                f"❌ Could not find inventory row with "
+                f"S.No {edited_row['S.No']}."
+            )
+            st.stop()
+
+        original_index = matching_indices[0]
+
+        # ----------------------------------------------------------------------
         # Equipment
+        # ----------------------------------------------------------------------
+
         if pd.isna(edited_row["EQUIPMENT"]):
 
             st.error(
@@ -576,34 +590,33 @@ if st.button(
             edited_row["EQUIPMENT"]
         ).strip()
 
-
+        # ----------------------------------------------------------------------
         # Project / Part No.
+        # ----------------------------------------------------------------------
+
         updated_df.at[
             original_index,
             "LASERAX PROJECT No. - Part NO"
         ] = (
             ""
             if pd.isna(
-                edited_row[
-                    "LASERAX PROJECT No. - Part NO"
-                ]
+                edited_row["LASERAX PROJECT No. - Part NO"]
             )
             else str(
-                edited_row[
-                    "LASERAX PROJECT No. - Part NO"
-                ]
+                edited_row["LASERAX PROJECT No. - Part NO"]
             ).strip()
         )
 
-
+        # ----------------------------------------------------------------------
         # Stock
+        # ----------------------------------------------------------------------
+
         stock_value = pd.to_numeric(
             edited_row["STOCK"],
             errors="coerce"
         )
 
         if pd.isna(stock_value):
-
             stock_value = 0
 
         updated_df.at[
@@ -614,51 +627,50 @@ if st.button(
             int(stock_value)
         )
 
-
+        # ----------------------------------------------------------------------
         # Location
+        # ----------------------------------------------------------------------
+
         updated_df.at[
             original_index,
             "LOCATION"
         ] = (
             ""
-            if pd.isna(
-                edited_row["LOCATION"]
-            )
+            if pd.isna(edited_row["LOCATION"])
             else str(
                 edited_row["LOCATION"]
             ).strip()
         )
 
-
+        # ----------------------------------------------------------------------
         # Remarks
+        # ----------------------------------------------------------------------
+
         updated_df.at[
             original_index,
             "REMARKS"
         ] = (
             ""
-            if pd.isna(
-                edited_row["REMARKS"]
-            )
+            if pd.isna(edited_row["REMARKS"])
             else str(
                 edited_row["REMARKS"]
             ).strip()
         )
 
-
+        # ----------------------------------------------------------------------
         # Procurement Link
+        # ----------------------------------------------------------------------
+
         updated_df.at[
             original_index,
             "PROCUREMENT LINK"
         ] = (
             ""
-            if pd.isna(
-                edited_row["PROCUREMENT LINK"]
-            )
+            if pd.isna(edited_row["PROCUREMENT LINK"])
             else str(
                 edited_row["PROCUREMENT LINK"]
             ).strip()
         )
-
 
     # --------------------------------------------------------------------------
     # Rebuild serial numbers
@@ -669,7 +681,6 @@ if st.button(
         len(updated_df) + 1
     )
 
-
     # --------------------------------------------------------------------------
     # Save to GitHub
     # --------------------------------------------------------------------------
@@ -678,24 +689,15 @@ if st.button(
         "Saving changes to GitHub..."
     ):
 
-        if save_to_github(
-            updated_df
-        ):
+        if save_to_github(updated_df):
 
-            st.session_state.inventory_df = (
-                updated_df
-            )
+            st.session_state.inventory_df = updated_df
 
             st.success(
                 "✅ Inventory table changes saved successfully!"
             )
 
             st.rerun()
-
-
-st.caption(
-    f"Showing {len(display_df)} of {len(df)} records."
-)
 
 # ==============================================================================
 # ADD INVENTORY ITEM
