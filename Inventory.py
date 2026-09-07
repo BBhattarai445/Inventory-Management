@@ -529,10 +529,15 @@ edited_df = st.data_editor(
             "Remarks"
         ),
 
-         "PROCUREMENT LINK": st.column_config.LinkColumn(
-        "Procurement",
-        display_text="🔗",
-        validate=r"^https?://.*$"
+         "PROCUREMENT LINK": st.column_config.TextColumn(
+        "Procurement URL",
+        disabled=True
+       ),
+
+    "PROCUREMENT": st.column_config.TextColumn(
+        "🔗",
+        disabled=True,
+        width="small"
        )
     },
 
