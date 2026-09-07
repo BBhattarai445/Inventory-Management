@@ -498,7 +498,7 @@ edited_df = st.data_editor(
     hide_index=True,
     num_rows="fixed",
 
-    "PROCUREMENT LINK": st.column_config.LinkColumn(
+"PROCUREMENT LINK": st.column_config.LinkColumn(
     "Procurement",
     display_text="🔗",
     validate=r"^https?://.*$"
