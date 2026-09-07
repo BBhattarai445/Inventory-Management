@@ -860,6 +860,87 @@ if st.button(
 # ==============================================================================
 # REMOVE INVENTORY ITEM
 # ==============================================================================
+```python
+def display_inventory_table(dataframe):
+    html = """
+    <style>
+        .inventory-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .inventory-table th {
+            padding: 10px;
+            text-align: left;
+            background-color: #f0f2f6;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .inventory-table td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .procurement-icon {
+            font-size: 22px;
+            text-decoration: none;
+        }
+
+        .procurement-icon:hover {
+            opacity: 0.7;
+        }
+    </style>
+
+    <table class="inventory-table">
+        <thead>
+            <tr>
+                <th>S.No</th>
+                <th>Equipment</th>
+                <th>Project / Part No.</th>
+                <th>Stock</th>
+                <th>Location</th>
+                <th>Remarks</th>
+                <th>Procurement</th>
+            </tr>
+        </thead>
+        <tbody>
+    """
+
+    for _, row in dataframe.iterrows():
+
+        procurement_link = str(row["PROCUREMENT LINK"]).strip()
+
+        if procurement_link and procurement_link.lower() != "nan":
+            procurement_html = f'''
+                <a href="{procurement_link}"
+                   target="_blank"
+                   class="procurement-icon"
+                   title="Open procurement link">
+                    🔗
+                </a>
+            '''
+        else:
+            procurement_html = "—"
+
+        html += f"""
+            <tr>
+                <td>{row['S.No']}</td>
+                <td>{row['EQUIPMENT']}</td>
+                <td>{row['LASERAX PROJECT No. - Part NO']}</td>
+                <td>{row['STOCK']}</td>
+                <td>{row['LOCATION']}</td>
+                <td>{row['REMARKS']}</td>
+                <td>{procurement_html}</td>
+            </tr>
+        """
+
+    html += """
+        </tbody>
+    </table>
+    """
+
+    st.markdown(html, unsafe_allow_html=True)
+```
 
 # ==============================================================================
 # REMOVE INVENTORY ITEM
