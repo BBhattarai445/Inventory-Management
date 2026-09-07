@@ -7,7 +7,7 @@ import requests
 
 
 
-PAGE CONFIG
+
 
 LOGO_PATH = Path(file).parent / "Picture1.png"
 
