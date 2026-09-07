@@ -529,9 +529,11 @@ edited_df = st.data_editor(
             "Remarks"
         ),
 
-        "PROCUREMENT LINK": st.column_config.LinkColumn(
-            "Procurement Link"
-        )
+         "PROCUREMENT LINK": st.column_config.LinkColumn(
+        "Procurement",
+        display_text="🔗",
+        validate=r"^https?://.*$"
+       )
     },
 
     disabled=["S.No"],
