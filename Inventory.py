@@ -538,11 +538,7 @@ edited_df = st.data_editor(
         disabled=True
        ),
 
-    "PROCUREMENT": st.column_config.TextColumn(
-        "🔗",
-        disabled=True,
-        width="small"
-       )
+        "PROCUREMENT LINK": st.column_config.LinkColumn( "Procurement", display_text="🔗" )
     },
 
     disabled=["S.No"],
