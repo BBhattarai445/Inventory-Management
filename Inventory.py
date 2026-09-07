@@ -490,6 +490,11 @@ st.warning(
 )
 # Create editable copy
 editable_df = display_df.copy()
+
+editable_df["PROCUREMENT"] = editable_df["PROCUREMENT LINK"].apply(
+    lambda x: "🔗" if pd.notna(x) and str(x).strip() not in ["", "nan", "None"] else ""
+)
+
 # Editable inventory table
 edited_df = st.data_editor(
     editable_df,
