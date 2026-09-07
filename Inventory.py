@@ -939,7 +939,6 @@ def display_inventory_table(dataframe):
     """
 
     st.markdown(html, unsafe_allow_html=True)
-```
 
 # ==============================================================================
 # REMOVE INVENTORY ITEM
