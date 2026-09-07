@@ -498,11 +498,41 @@ edited_df = st.data_editor(
     hide_index=True,
     num_rows="fixed",
 
-"PROCUREMENT LINK": st.column_config.LinkColumn(
-    "Procurement",
-    display_text="🔗",
-    validate=r"^https?://.*$"
-)
+    column_config={
+
+        "S.No": st.column_config.NumberColumn(
+            "S.No",
+            disabled=True,
+            width="small"
+        ),
+
+        "EQUIPMENT": st.column_config.TextColumn(
+            "Equipment",
+            required=True
+        ),
+
+        "LASERAX PROJECT No. - Part NO": st.column_config.TextColumn(
+            "Project / Part No."
+        ),
+
+        "STOCK": st.column_config.NumberColumn(
+            "Stock",
+            min_value=0,
+            step=1
+        ),
+
+        "LOCATION": st.column_config.TextColumn(
+            "Location"
+        ),
+
+        "REMARKS": st.column_config.TextColumn(
+            "Remarks"
+        ),
+
+        "PROCUREMENT LINK": st.column_config.LinkColumn(
+            "Procurement Link"
+        )
+    },
 
     disabled=["S.No"],
 
