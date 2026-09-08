@@ -60,6 +60,7 @@ GITHUB_TOKEN = st.secrets.get("GITHUB_TOKEN", "")
 DEFAULT_COLUMNS = [
     "S.No",
     "EQUIPMENT",
+    "CATEGORY",
     "LASERAX PROJECT No. - Part NO",
     "STOCK",
     "LOCATION",
@@ -388,6 +389,16 @@ df = st.session_state.inventory_df
 for column in DEFAULT_COLUMNS:
 
     if column not in df.columns:
+        CATEGORY_OPTIONS = [
+    "Tools",
+    "Electrical",
+    "Mechanical",
+    "Electronics",
+    "Safety",
+    "Consumables",
+    "Equipment",
+    "Other"
+     ]
 
         df[column] = ""
 
