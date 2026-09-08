@@ -81,7 +81,7 @@ DEFAULT_CATEGORY_OPTIONS = [
     "Equipment",
     "Pneumatics",
     "Cables",
-    "IT",
+    "Lens",
     "Office",
     "Other"
 ]
