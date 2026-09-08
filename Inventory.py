@@ -76,12 +76,11 @@ DEFAULT_CATEGORY_OPTIONS = [
     "Tools",
     "Electrical",
     "Mechanical",
-    "Electronics",
     "Safety",
     "Consumables",
     "Equipment",
     "Pneumatics",
-    "Hydraulics",
+    "Cables",
     "IT",
     "Office",
     "Other"
