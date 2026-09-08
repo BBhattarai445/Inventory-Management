@@ -506,21 +506,7 @@ with filter_col2:
     )
 
 
-with filter_col3:
 
-    reset = st.button(
-        "🔄 Reset",
-        use_container_width=True
-    )
-
-
-if reset:
-
-    st.session_state.main_search = ""
-    st.session_state.category_filter = "All Categories"
-    st.session_state.category_filter = "Cables"
-
-    st.rerun()
 
 
 # ==============================================================================
