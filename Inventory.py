@@ -82,6 +82,7 @@ DEFAULT_CATEGORY_OPTIONS = [
     "Chemical",
     "Cables",
     "Lens",
+    "Fastaners",
     "Office",
     "Other"
 ]
