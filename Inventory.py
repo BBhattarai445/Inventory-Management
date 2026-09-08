@@ -465,10 +465,48 @@ if reset:
 # FILTER
 # ==============================================================================
 
-if search_query:
+# ==============================================================================
+# SEARCH & FILTER
+# ==============================================================================
 
-    display_df = df[
-        df["EQUIPMENT"]
+st.markdown("---")
+st.subheader("🔎 Search & Filter Inventory")
+
+filter_col1, filter_col2, filter_col3 = st.columns([4, 2, 1])
+
+with filter_col1:
+    search_query = st.text_input(
+        "Search",
+        placeholder="Search equipment...",
+        label_visibility="collapsed"
+    )
+
+with filter_col2:
+    category_filter = st.selectbox(
+        "Category",
+        options=["All Categories"] + CATEGORY_OPTIONS
+    )
+
+with filter_col3:
+    reset = st.button(
+        "🔄 Reset",
+        use_container_width=True
+    )
+
+if reset:
+    st.rerun()
+
+
+# ==============================================================================
+# APPLY FILTERS
+# ==============================================================================
+
+display_df = df.copy()
+
+# Search equipment
+if search_query:
+    display_df = display_df[
+        display_df["EQUIPMENT"]
         .astype(str)
         .str.contains(
             search_query,
@@ -477,9 +515,14 @@ if search_query:
         )
     ]
 
-else:
-
-    display_df = df
+# Category filter
+if category_filter != "All Categories":
+    display_df = display_df[
+        display_df["CATEGORY"]
+        .astype(str)
+        .str.strip()
+        .eq(category_filter)
+    ]
 
 
 # ==============================================================================
