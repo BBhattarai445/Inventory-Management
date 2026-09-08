@@ -518,6 +518,7 @@ if reset:
 
     st.session_state.main_search = ""
     st.session_state.category_filter = "All Categories"
+    st.session_state.category_filter = "Cables"
 
     st.rerun()
 
