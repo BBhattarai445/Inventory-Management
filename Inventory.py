@@ -79,7 +79,7 @@ DEFAULT_CATEGORY_OPTIONS = [
     "Safety",
     "Consumables",
     "Equipment",
-    "Pneumatics",
+    "Chemical",
     "Cables",
     "Lens",
     "Office",
