@@ -525,6 +525,9 @@ if reset:
 # ==============================================================================
 # APPLY FILTERS
 # ==============================================================================
+st.warning(
+    "If app faces issue while reset you can click All Catagories Again"
+)
 
 display_df = df.copy()
 
