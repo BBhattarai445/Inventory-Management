@@ -1,10 +1,10 @@
+```python
 from pathlib import Path
 import streamlit as st
 import pandas as pd
 import io
 import base64
 import requests
-
 
 
 # ==============================================================================
@@ -30,7 +30,9 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
 st.title("🏭 Laserax GmbH Inventory Manager")
+
 
 # ==============================================================================
 # GITHUB CONFIGURATION
@@ -69,6 +71,23 @@ DEFAULT_COLUMNS = [
 ]
 
 
+# Standard category options
+DEFAULT_CATEGORY_OPTIONS = [
+    "Tools",
+    "Electrical",
+    "Mechanical",
+    "Electronics",
+    "Safety",
+    "Consumables",
+    "Equipment",
+    "Pneumatics",
+    "Hydraulics",
+    "IT",
+    "Office",
+    "Other"
+]
+
+
 # ==============================================================================
 # SESSION STATE
 # ==============================================================================
@@ -87,9 +106,6 @@ if "inventory_df" not in st.session_state:
 
 
 # ==============================================================================
-# LOGIN PAGE
-# ==============================================================================
-# ==============================================================================
 # GITHUB HEADERS
 # ==============================================================================
 
@@ -101,12 +117,39 @@ def get_github_headers():
     }
 
     if GITHUB_TOKEN:
-
         headers["Authorization"] = (
             f"Bearer {GITHUB_TOKEN}"
         )
 
     return headers
+
+
+# ==============================================================================
+# CATEGORY OPTIONS
+# ==============================================================================
+
+def get_category_options(dataframe):
+
+    categories = set(DEFAULT_CATEGORY_OPTIONS)
+
+    if "CATEGORY" in dataframe.columns:
+
+        existing_categories = (
+            dataframe["CATEGORY"]
+            .dropna()
+            .astype(str)
+            .str.strip()
+        )
+
+        existing_categories = {
+            category
+            for category in existing_categories
+            if category
+        }
+
+        categories.update(existing_categories)
+
+    return sorted(categories)
 
 
 # ==============================================================================
@@ -125,7 +168,6 @@ def load_from_github():
             columns=DEFAULT_COLUMNS
         )
 
-
     try:
 
         response = requests.get(
@@ -133,7 +175,6 @@ def load_from_github():
             headers=get_github_headers(),
             timeout=30
         )
-
 
         if response.status_code != 200:
 
@@ -147,9 +188,7 @@ def load_from_github():
                 columns=DEFAULT_COLUMNS
             )
 
-
         github_data = response.json()
-
 
         if "content" not in github_data:
 
@@ -161,7 +200,6 @@ def load_from_github():
                 columns=DEFAULT_COLUMNS
             )
 
-
         encoded_content = (
             github_data["content"]
             .replace("\n", "")
@@ -169,55 +207,69 @@ def load_from_github():
             .strip()
         )
 
-
         file_data = base64.b64decode(
             encoded_content
         )
-
 
         dataframe = pd.read_excel(
             io.BytesIO(file_data),
             engine="openpyxl"
         )
 
-
+        # ----------------------------------------------------------------------
         # Clean column names
+        # ----------------------------------------------------------------------
+
         dataframe.columns = (
             dataframe.columns
             .astype(str)
             .str.strip()
         )
 
-
+        # ----------------------------------------------------------------------
         # Make sure every required column exists
+        # ----------------------------------------------------------------------
+
         for column in DEFAULT_COLUMNS:
 
             if column not in dataframe.columns:
 
                 dataframe[column] = ""
 
-
         dataframe = dataframe[
             DEFAULT_COLUMNS
         ]
 
-
+        # ----------------------------------------------------------------------
         # Rebuild S.No
+        # ----------------------------------------------------------------------
+
         dataframe["S.No"] = range(
             1,
             len(dataframe) + 1
         )
 
-
+        # ----------------------------------------------------------------------
         # Make STOCK numeric
+        # ----------------------------------------------------------------------
+
         dataframe["STOCK"] = pd.to_numeric(
             dataframe["STOCK"],
             errors="coerce"
         ).fillna(0).astype(int)
 
+        # ----------------------------------------------------------------------
+        # Clean CATEGORY
+        # ----------------------------------------------------------------------
+
+        dataframe["CATEGORY"] = (
+            dataframe["CATEGORY"]
+            .fillna("")
+            .astype(str)
+            .str.strip()
+        )
 
         return dataframe
-
 
     except Exception as e:
 
@@ -244,15 +296,26 @@ def save_to_github(dataframe):
 
         return False
 
-
     try:
+
+        # ----------------------------------------------------------------------
+        # Ensure correct column order
+        # ----------------------------------------------------------------------
+
+        for column in DEFAULT_COLUMNS:
+
+            if column not in dataframe.columns:
+                dataframe[column] = ""
+
+        dataframe = dataframe[
+            DEFAULT_COLUMNS
+        ].copy()
 
         # ----------------------------------------------------------------------
         # Create Excel file in memory
         # ----------------------------------------------------------------------
 
         buffer = io.BytesIO()
-
 
         with pd.ExcelWriter(
             buffer,
@@ -265,9 +328,7 @@ def save_to_github(dataframe):
                 sheet_name="Inventory"
             )
 
-
         buffer.seek(0)
-
 
         # ----------------------------------------------------------------------
         # Convert to Base64
@@ -276,7 +337,6 @@ def save_to_github(dataframe):
         encoded_content = base64.b64encode(
             buffer.getvalue()
         ).decode("utf-8")
-
 
         # ----------------------------------------------------------------------
         # Get current SHA
@@ -288,7 +348,6 @@ def save_to_github(dataframe):
             timeout=30
         )
 
-
         if response.status_code != 200:
 
             st.error(
@@ -299,11 +358,9 @@ def save_to_github(dataframe):
 
             return False
 
-
         github_file = response.json()
 
         sha = github_file.get("sha")
-
 
         if not sha:
 
@@ -313,23 +370,15 @@ def save_to_github(dataframe):
 
             return False
 
-
         # ----------------------------------------------------------------------
         # Upload
         # ----------------------------------------------------------------------
 
         payload = {
-
-            "message":
-                "Update inventory via Streamlit",
-
-            "content":
-                encoded_content,
-
-            "sha":
-                sha
+            "message": "Update inventory via Streamlit",
+            "content": encoded_content,
+            "sha": sha
         }
-
 
         upload_response = requests.put(
             API_URL,
@@ -338,11 +387,9 @@ def save_to_github(dataframe):
             timeout=30
         )
 
-
         if upload_response.status_code in [200, 201]:
 
             return True
-
 
         st.error(
             f"❌ GitHub save failed.\n\n"
@@ -351,7 +398,6 @@ def save_to_github(dataframe):
         )
 
         return False
-
 
     except Exception as e:
 
@@ -366,9 +412,7 @@ def save_to_github(dataframe):
 # LOAD DATA
 # ==============================================================================
 
-if (
-    st.session_state.inventory_df is None
-):
+if st.session_state.inventory_df is None:
 
     with st.spinner(
         "Loading inventory from GitHub..."
@@ -389,115 +433,92 @@ df = st.session_state.inventory_df
 for column in DEFAULT_COLUMNS:
 
     if column not in df.columns:
-        CATEGORY_OPTIONS = [
-    "Tools",
-    "Electrical",
-    "Mechanical",
-    "Electronics",
-    "Safety",
-    "Consumables",
-    "Equipment",
-    "Other"
-     ]
-
         df[column] = ""
-
 
 df = df[
     DEFAULT_COLUMNS
-]
+].copy()
 
 
+# Rebuild S.No
 df["S.No"] = range(
     1,
     len(df) + 1
 )
 
 
+# Make STOCK numeric
 df["STOCK"] = pd.to_numeric(
     df["STOCK"],
     errors="coerce"
 ).fillna(0).astype(int)
 
 
-st.session_state.inventory_df = df
-
-
-
-
-# ==============================================================================
-# SEARCH
-# ==============================================================================
-
-st.markdown("---")
-
-st.subheader("🔎 Search Inventory")
-
-
-search_col1, search_col2 = st.columns(
-    [4, 1]
+# Clean CATEGORY
+df["CATEGORY"] = (
+    df["CATEGORY"]
+    .fillna("")
+    .astype(str)
+    .str.strip()
 )
 
 
-with search_col1:
-
-    search_query = st.text_input(
-        "Search",
-        placeholder="Search equipment...",
-        label_visibility="collapsed"
-    )
-
-
-with search_col2:
-
-    reset = st.button(
-        "🔄 Reset",
-        use_container_width=True
-    )
-
-
-if reset:
-
-    st.rerun()
+st.session_state.inventory_df = df
 
 
 # ==============================================================================
-# FILTER
+# CATEGORY OPTIONS
 # ==============================================================================
 
-# ==============================================================================
-# SEARCH & FILTER
-# ==============================================================================
+CATEGORY_OPTIONS = get_category_options(df)
+
 
 # ==============================================================================
 # SEARCH & FILTER
 # ==============================================================================
 
 st.markdown("---")
+
 st.subheader("🔎 Search & Filter Inventory")
 
-filter_col1, filter_col2, filter_col3 = st.columns([4, 2, 1])
+
+filter_col1, filter_col2, filter_col3 = st.columns(
+    [4, 2, 1]
+)
+
 
 with filter_col1:
+
     search_query = st.text_input(
         "Search",
         placeholder="Search equipment...",
-        label_visibility="collapsed"
+        label_visibility="collapsed",
+        key="main_search"
     )
+
 
 with filter_col2:
+
     category_filter = st.selectbox(
         "Category",
-        options=["All Categories"] + CATEGORY_OPTIONS
+        options=["All Categories"] + CATEGORY_OPTIONS,
+        key="category_filter"
     )
 
+
 with filter_col3:
+
     reset = st.button(
         "🔄 Reset",
         use_container_width=True
     )
 
+
 if reset:
+
+    st.session_state.main_search = ""
+    st.session_state.category_filter = "All Categories"
+
     st.rerun()
 
 
@@ -507,8 +528,10 @@ if reset:
 
 display_df = df.copy()
 
+
 # Search equipment
 if search_query:
+
     display_df = display_df[
         display_df["EQUIPMENT"]
         .astype(str)
@@ -519,8 +542,10 @@ if search_query:
         )
     ]
 
+
 # Category filter
 if category_filter != "All Categories":
+
     display_df = display_df[
         display_df["CATEGORY"]
         .astype(str)
@@ -533,23 +558,29 @@ if category_filter != "All Categories":
 # INVENTORY TABLE
 # ==============================================================================
 
-# ==============================================================================
-# INVENTORY TABLE - EDITABLE
-# ==============================================================================
-# ==============================================================================
-# INVENTORY TABLE - EDITABLE
-# ==============================================================================
-
 st.markdown("---")
 
 st.subheader("📋 Current Stock Inventory")
+
 st.warning(
-    "⚠️ Can be edited simply clicking in the item."
+    "⚠️ Can be edited simply by clicking in the item."
 )
+
+
+# Show filtered record count
+st.caption(
+    f"Showing {len(display_df)} of {len(df)} inventory records."
+)
+
+
 # Create editable copy
 editable_df = display_df.copy()
 
-# Editable inventory table
+
+# ==============================================================================
+# EDITABLE INVENTORY TABLE
+# ==============================================================================
+
 edited_df = st.data_editor(
     editable_df,
     use_container_width=True,
@@ -569,9 +600,16 @@ edited_df = st.data_editor(
             required=True
         ),
 
-        "LASERAX PROJECT No. - Part NO": st.column_config.TextColumn(
-            "Project / Part No."
+        "CATEGORY": st.column_config.SelectboxColumn(
+            "Category",
+            options=CATEGORY_OPTIONS,
+            required=True
         ),
+
+        "LASERAX PROJECT No. - Part NO":
+            st.column_config.TextColumn(
+                "Project / Part No."
+            ),
 
         "STOCK": st.column_config.NumberColumn(
             "Stock",
@@ -587,12 +625,16 @@ edited_df = st.data_editor(
             "Remarks"
         ),
 
-        "PROCUREMENT LINK": st.column_config.LinkColumn( "Procurement", display_text="🔗" )
+        "PROCUREMENT LINK":
+            st.column_config.LinkColumn(
+                "Procurement",
+                display_text="🔗"
+            )
     },
 
     disabled=["S.No"],
 
-    key=f"inventory_editor_{search_query}"
+    key=f"inventory_editor_{search_query}_{category_filter}"
 )
 
 
@@ -606,24 +648,31 @@ if st.button(
     use_container_width=True
 ):
 
-    updated_df = st.session_state.inventory_df.copy()
+    updated_df = (
+        st.session_state.inventory_df.copy()
+    )
 
     # --------------------------------------------------------------------------
-    # Update rows from the edited table
+    # Update rows from edited table
     # --------------------------------------------------------------------------
 
     for _, edited_row in edited_df.iterrows():
 
+        # ----------------------------------------------------------------------
         # Find original row using S.No
+        # ----------------------------------------------------------------------
+
         matching_indices = updated_df.index[
             updated_df["S.No"] == edited_row["S.No"]
         ]
 
         if len(matching_indices) == 0:
+
             st.error(
                 f"❌ Could not find inventory row with "
                 f"S.No {edited_row['S.No']}."
             )
+
             st.stop()
 
         original_index = matching_indices[0]
@@ -649,6 +698,21 @@ if st.button(
         ).strip()
 
         # ----------------------------------------------------------------------
+        # Category
+        # ----------------------------------------------------------------------
+
+        updated_df.at[
+            original_index,
+            "CATEGORY"
+        ] = (
+            ""
+            if pd.isna(edited_row["CATEGORY"])
+            else str(
+                edited_row["CATEGORY"]
+            ).strip()
+        )
+
+        # ----------------------------------------------------------------------
         # Project / Part No.
         # ----------------------------------------------------------------------
 
@@ -658,10 +722,14 @@ if st.button(
         ] = (
             ""
             if pd.isna(
-                edited_row["LASERAX PROJECT No. - Part NO"]
+                edited_row[
+                    "LASERAX PROJECT No. - Part NO"
+                ]
             )
             else str(
-                edited_row["LASERAX PROJECT No. - Part NO"]
+                edited_row[
+                    "LASERAX PROJECT No. - Part NO"
+                ]
             ).strip()
         )
 
@@ -675,6 +743,7 @@ if st.button(
         )
 
         if pd.isna(stock_value):
+
             stock_value = 0
 
         updated_df.at[
@@ -694,7 +763,9 @@ if st.button(
             "LOCATION"
         ] = (
             ""
-            if pd.isna(edited_row["LOCATION"])
+            if pd.isna(
+                edited_row["LOCATION"]
+            )
             else str(
                 edited_row["LOCATION"]
             ).strip()
@@ -709,7 +780,9 @@ if st.button(
             "REMARKS"
         ] = (
             ""
-            if pd.isna(edited_row["REMARKS"])
+            if pd.isna(
+                edited_row["REMARKS"]
+            )
             else str(
                 edited_row["REMARKS"]
             ).strip()
@@ -724,7 +797,9 @@ if st.button(
             "PROCUREMENT LINK"
         ] = (
             ""
-            if pd.isna(edited_row["PROCUREMENT LINK"])
+            if pd.isna(
+                edited_row["PROCUREMENT LINK"]
+            )
             else str(
                 edited_row["PROCUREMENT LINK"]
             ).strip()
@@ -749,13 +824,16 @@ if st.button(
 
         if save_to_github(updated_df):
 
-            st.session_state.inventory_df = updated_df
+            st.session_state.inventory_df = (
+                updated_df
+            )
 
             st.success(
                 "✅ Inventory table changes saved successfully!"
             )
 
             st.rerun()
+
 
 # ==============================================================================
 # ADD INVENTORY ITEM
@@ -767,9 +845,14 @@ st.subheader("➕ Add Inventory Item")
 
 st.info(
     "Add a new inventory record below. "
-    "The new item will be added to the Excel inventory and synchronized with GitHub."
+    "The new item will be added to the Excel inventory "
+    "and synchronized with GitHub."
 )
 
+
+# ==============================================================================
+# ADD ITEM - ROW 1
+# ==============================================================================
 
 add_col1, add_col2, add_col3 = st.columns(3)
 
@@ -784,13 +867,29 @@ with add_col1:
 
 with add_col2:
 
+    add_category = st.selectbox(
+        "Category",
+        options=CATEGORY_OPTIONS,
+        key="add_category"
+    )
+
+
+with add_col3:
+
     add_proj = st.text_input(
         "Project / Part No.",
         key="add_project"
     )
 
 
-with add_col3:
+# ==============================================================================
+# ADD ITEM - ROW 2
+# ==============================================================================
+
+add_col4, add_col5, add_col6 = st.columns(3)
+
+
+with add_col4:
 
     add_stock = st.number_input(
         "Stock",
@@ -801,10 +900,7 @@ with add_col3:
     )
 
 
-add_col4, add_col5, add_col6 = st.columns(3)
-
-
-with add_col4:
+with add_col5:
 
     add_loc = st.text_input(
         "Location",
@@ -812,7 +908,7 @@ with add_col4:
     )
 
 
-with add_col5:
+with add_col6:
 
     add_rem = st.text_input(
         "Remarks",
@@ -820,13 +916,16 @@ with add_col5:
     )
 
 
-with add_col6:
+# Procurement link
+add_link = st.text_input(
+    "Procurement Link",
+    key="add_link"
+)
 
-    add_link = st.text_input(
-        "Procurement Link",
-        key="add_link"
-    )
 
+# ==============================================================================
+# ADD ITEM BUTTON
+# ==============================================================================
 
 if st.button(
     "💾 Add Inventory Item",
@@ -842,7 +941,10 @@ if st.button(
 
     else:
 
+        # ----------------------------------------------------------------------
         # Create new inventory row
+        # ----------------------------------------------------------------------
+
         new_row = pd.DataFrame([{
 
             "S.No":
@@ -850,6 +952,9 @@ if st.button(
 
             "EQUIPMENT":
                 add_eq.strip(),
+
+            "CATEGORY":
+                add_category,
 
             "LASERAX PROJECT No. - Part NO":
                 add_proj.strip(),
@@ -868,8 +973,10 @@ if st.button(
 
         }])
 
-
+        # ----------------------------------------------------------------------
         # Add new row to existing inventory
+        # ----------------------------------------------------------------------
+
         updated_df = pd.concat(
             [
                 st.session_state.inventory_df,
@@ -878,22 +985,28 @@ if st.button(
             ignore_index=True
         )
 
-
+        # ----------------------------------------------------------------------
         # Rebuild S.No
+        # ----------------------------------------------------------------------
+
         updated_df["S.No"] = range(
             1,
             len(updated_df) + 1
         )
 
-
+        # ----------------------------------------------------------------------
         # Make stock numeric
+        # ----------------------------------------------------------------------
+
         updated_df["STOCK"] = pd.to_numeric(
             updated_df["STOCK"],
             errors="coerce"
         ).fillna(0).astype(int)
 
-
+        # ----------------------------------------------------------------------
         # Save to GitHub
+        # ----------------------------------------------------------------------
+
         with st.spinner(
             "Adding inventory item..."
         ):
@@ -917,10 +1030,6 @@ if st.button(
 # REMOVE INVENTORY ITEM
 # ==============================================================================
 
-# ==============================================================================
-# REMOVE INVENTORY ITEM
-# ==============================================================================
-
 st.markdown("---")
 
 st.subheader("➖ Remove Inventory Item")
@@ -929,9 +1038,12 @@ st.warning(
     "⚠️ Removing an item will permanently delete it from the inventory."
 )
 
+
 if len(df) == 0:
 
-    st.info("No inventory records available.")
+    st.info(
+        "No inventory records available."
+    )
 
 else:
 
@@ -941,7 +1053,10 @@ else:
 
     remove_search = st.text_input(
         "🔎 Search inventory item to remove",
-        placeholder="Type equipment name, project/part number, location, or remarks...",
+        placeholder=(
+            "Type equipment name, project/part number, "
+            "location, category, or remarks..."
+        ),
         key="remove_inventory_search"
     )
 
@@ -954,110 +1069,171 @@ else:
         search_text = remove_search.strip()
 
         remove_mask = (
-            df["EQUIPMENT"].astype(str).str.contains(
+            df["EQUIPMENT"]
+            .astype(str)
+            .str.contains(
                 search_text,
                 case=False,
                 na=False
             )
             |
-            df["LASERAX PROJECT No. - Part NO"].astype(str).str.contains(
+            df["CATEGORY"]
+            .astype(str)
+            .str.contains(
                 search_text,
                 case=False,
                 na=False
             )
             |
-            df["LOCATION"].astype(str).str.contains(
+            df["LASERAX PROJECT No. - Part NO"]
+            .astype(str)
+            .str.contains(
                 search_text,
                 case=False,
                 na=False
             )
             |
-            df["REMARKS"].astype(str).str.contains(
+            df["LOCATION"]
+            .astype(str)
+            .str.contains(
+                search_text,
+                case=False,
+                na=False
+            )
+            |
+            df["REMARKS"]
+            .astype(str)
+            .str.contains(
                 search_text,
                 case=False,
                 na=False
             )
         )
 
-        remove_results = df[remove_mask].copy()
+        remove_results = df[
+            remove_mask
+        ].copy()
 
     else:
 
-        remove_results = pd.DataFrame(columns=df.columns)
+        remove_results = pd.DataFrame(
+            columns=df.columns
+        )
 
     # --------------------------------------------------------------------------
     # SHOW SEARCH RESULTS
     # --------------------------------------------------------------------------
 
-    if remove_search.strip() and len(remove_results) == 0:
+    if (
+        remove_search.strip()
+        and len(remove_results) == 0
+    ):
 
         st.info(
-            f"🔍 No inventory items found for **{remove_search}**."
+            f"🔍 No inventory items found for "
+            f"**{remove_search}**."
         )
 
     elif len(remove_results) > 0:
 
         st.success(
-            f"🔍 Found **{len(remove_results)}** matching inventory item(s)."
+            f"🔍 Found **{len(remove_results)}** "
+            f"matching inventory item(s)."
         )
 
+        # ----------------------------------------------------------------------
         # Create readable selection options
+        # ----------------------------------------------------------------------
+
         remove_options = {
-            f"Row {row['S.No']}: {row['EQUIPMENT']} "
+
+            f"Row {row['S.No']}: "
+            f"{row['EQUIPMENT']} "
+            f"| Category: {row['CATEGORY']} "
             f"| Stock: {row['STOCK']} "
             f"| Location: {row['LOCATION']}":
-            row["S.No"]
+                row["S.No"]
+
             for _, row in remove_results.iterrows()
         }
 
         remove_selected = st.selectbox(
             "Select the item you want to delete",
-            options=list(remove_options.keys()),
+            options=list(
+                remove_options.keys()
+            ),
             key="remove_inventory_selection"
         )
 
+        # ----------------------------------------------------------------------
         # Get selected S.No
-        remove_sno = remove_options[remove_selected]
+        # ----------------------------------------------------------------------
 
+        remove_sno = remove_options[
+            remove_selected
+        ]
+
+        # ----------------------------------------------------------------------
         # Find selected row
+        # ----------------------------------------------------------------------
+
         remove_matching = df[
             df["S.No"] == remove_sno
         ]
 
         if len(remove_matching) > 0:
 
-            remove_row_idx = remove_matching.index[0]
+            remove_row_idx = (
+                remove_matching.index[0]
+            )
 
-            remove_current = df.loc[remove_row_idx]
+            remove_current = (
+                df.loc[remove_row_idx]
+            )
 
             # ------------------------------------------------------------------
             # SHOW SELECTED ITEM
             # ------------------------------------------------------------------
 
-            st.markdown("### Selected Inventory Item")
+            st.markdown(
+                "### Selected Inventory Item"
+            )
 
-            remove_col1, remove_col2, remove_col3 = st.columns(3)
+            remove_col1, remove_col2, remove_col3 = (
+                st.columns(3)
+            )
 
             with remove_col1:
 
                 st.metric(
                     "Equipment",
-                    str(remove_current["EQUIPMENT"])
+                    str(
+                        remove_current["EQUIPMENT"]
+                    )
                 )
 
             with remove_col2:
 
                 st.metric(
-                    "Stock",
-                    int(remove_current["STOCK"])
+                    "Category",
+                    str(
+                        remove_current["CATEGORY"]
+                    )
                 )
 
             with remove_col3:
 
                 st.metric(
-                    "Location",
-                    str(remove_current["LOCATION"])
+                    "Stock",
+                    int(
+                        remove_current["STOCK"]
+                    )
                 )
+
+            st.write(
+                f"**Location:** "
+                f"{remove_current['LOCATION']}"
+            )
 
             st.write(
                 f"**Project / Part No.:** "
@@ -1073,7 +1249,9 @@ else:
             # DELETE BUTTON
             # ------------------------------------------------------------------
 
-            confirm_key = f"confirm_remove_{remove_sno}"
+            confirm_key = (
+                f"confirm_remove_{remove_sno}"
+            )
 
             if st.button(
                 "🗑️ Remove Selected Inventory",
@@ -1082,20 +1260,27 @@ else:
                 key=f"remove_button_{remove_sno}"
             ):
 
-                st.session_state[confirm_key] = True
+                st.session_state[
+                    confirm_key
+                ] = True
 
             # ------------------------------------------------------------------
             # CONFIRMATION
             # ------------------------------------------------------------------
 
-            if st.session_state.get(confirm_key, False):
+            if st.session_state.get(
+                confirm_key,
+                False
+            ):
 
                 st.error(
-                    f"⚠️ You are about to permanently remove "
-                    f"**{remove_current['EQUIPMENT']}**."
+                    f"⚠️ You are about to permanently "
+                    f"remove **{remove_current['EQUIPMENT']}**."
                 )
 
-                confirm_col1, confirm_col2 = st.columns(2)
+                confirm_col1, confirm_col2 = (
+                    st.columns(2)
+                )
 
                 with confirm_col1:
 
@@ -1108,28 +1293,43 @@ else:
 
                         updated_df = (
                             st.session_state.inventory_df
-                            .drop(index=remove_row_idx)
-                            .reset_index(drop=True)
+                            .drop(
+                                index=remove_row_idx
+                            )
+                            .reset_index(
+                                drop=True
+                            )
                         )
 
+                        # ------------------------------------------------------
                         # Rebuild S.No
+                        # ------------------------------------------------------
+
                         updated_df["S.No"] = range(
                             1,
                             len(updated_df) + 1
                         )
 
+                        # ------------------------------------------------------
                         # Make stock numeric
+                        # ------------------------------------------------------
+
                         updated_df["STOCK"] = pd.to_numeric(
                             updated_df["STOCK"],
                             errors="coerce"
                         ).fillna(0).astype(int)
 
+                        # ------------------------------------------------------
                         # Save to GitHub
+                        # ------------------------------------------------------
+
                         with st.spinner(
                             "Removing inventory item..."
                         ):
 
-                            if save_to_github(updated_df):
+                            if save_to_github(
+                                updated_df
+                            ):
 
                                 st.session_state.inventory_df = (
                                     updated_df
@@ -1140,7 +1340,8 @@ else:
                                 ] = False
 
                                 st.success(
-                                    "🗑️ Inventory item removed successfully."
+                                    "🗑️ Inventory item "
+                                    "removed successfully."
                                 )
 
                                 st.rerun()
@@ -1159,10 +1360,12 @@ else:
 
                         st.rerun()
 
+
 # ==============================================================================
 # FOOTER
 # ==============================================================================
 
+st.markdown("---")
 
 st.caption(
     "☁️ Inventory data is synchronized with GitHub."
@@ -1171,3 +1374,4 @@ st.caption(
 st.caption(
     f"Total inventory records: {len(df)}"
 )
+```
