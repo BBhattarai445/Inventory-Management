@@ -1006,7 +1006,7 @@ if st.button(
                     updated_df
                 )
 
-               if save_to_github(updated_df):
+            if save_to_github(updated_df):
 
                st.session_state.inventory_df = updated_df
 
