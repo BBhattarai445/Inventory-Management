@@ -999,9 +999,20 @@ if st.button(
         ):
 
             if save_to_github(updated_df):
-                st.session_state.inventory_df = (
-                    updated_df
-                )
+                st.session_state.inventory_df = updated_df
+                st.session_state["add_equipment"] = ""
+                st.session_state["add_category"] = CATEGORY_OPTIONS[0]
+                st.session_state["add_project"] = ""
+                st.session_state["add_stock"] = 0
+                st.session_state["add_location"] = ""
+                st.session_state["add_remarks"] = ""
+                st.session_state["add_link"] = ""
+
+    st.success(
+        "✅ New inventory item added successfully!"
+    )
+
+    st.rerun()
 
     st.success(
         "✅ New inventory item added successfully!"
