@@ -1008,22 +1008,10 @@ if st.button(
                 st.session_state["add_remarks"] = ""
                 st.session_state["add_link"] = ""
 
-    st.success(
-        "✅ New inventory item added successfully!"
-    )
-
-    st.rerun()
-
-    st.success(
-        "✅ New inventory item added successfully!"
-    )
-
-    st.rerun()
-    st.success(
-        "✅ New inventory item added successfully!"
-    )
-
-    st.rerun()
+                st.success(
+                    "✅ New inventory item added successfully!!
+                    )
+                st.rerun()
 
 # ==============================================================================
 # REMOVE INVENTORY ITEM
