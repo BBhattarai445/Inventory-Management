@@ -1009,7 +1009,7 @@ if st.button(
                 st.session_state["add_link"] = ""
 
                 st.success(
-                    "✅ New inventory item added successfully!!
+                    "✅ New inventory item added successfully!"
                     )
                 st.rerun()
 
