@@ -998,14 +998,6 @@ if st.button(
             "Adding inventory item..."
         ):
 
-            if save_to_github(
-                updated_df
-            ):
-
-                st.session_state.inventory_df = (
-                    updated_df
-                )
-
             if save_to_github(updated_df):
 
                st.session_state.inventory_df = updated_df
