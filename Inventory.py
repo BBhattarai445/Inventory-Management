@@ -832,93 +832,92 @@ st.subheader("➕ Add Inventory Item")
 
 st.info(
     "Add a new inventory record below. "
-    "The new item will be added to the Excel inventory "
-    "and synchronized with GitHub."
+    "The form will automatically clear after adding the item."
 )
 
-
 # ==============================================================================
-# ADD ITEM - ROW 1
+# ADD INVENTORY FORM
 # ==============================================================================
 
-add_col1, add_col2, add_col3 = st.columns(3)
+with st.form("add_inventory_form", clear_on_submit=True):
 
+    # --------------------------------------------------------------------------
+    # ROW 1
+    # --------------------------------------------------------------------------
 
-with add_col1:
+    add_col1, add_col2, add_col3 = st.columns(3)
 
-    add_eq = st.text_input(
-        "Equipment Name",
-        key="add_equipment"
+    with add_col1:
+        add_eq = st.text_input(
+            "Equipment Name",
+            key="add_equipment"
+        )
+
+    with add_col2:
+        add_category = st.selectbox(
+            "Category",
+            options=CATEGORY_OPTIONS,
+            key="add_category"
+        )
+
+    with add_col3:
+        add_proj = st.text_input(
+            "Project / Part No.",
+            key="add_project"
+        )
+
+    # --------------------------------------------------------------------------
+    # ROW 2
+    # --------------------------------------------------------------------------
+
+    add_col4, add_col5, add_col6 = st.columns(3)
+
+    with add_col4:
+        add_stock = st.number_input(
+            "Stock",
+            min_value=0,
+            value=0,
+            step=1,
+            key="add_stock"
+        )
+
+    with add_col5:
+        add_loc = st.text_input(
+            "Location",
+            key="add_location"
+        )
+
+    with add_col6:
+        add_rem = st.text_input(
+            "Remarks",
+            key="add_remarks"
+        )
+
+    # --------------------------------------------------------------------------
+    # PROCUREMENT LINK
+    # --------------------------------------------------------------------------
+
+    add_link = st.text_input(
+        "Procurement Link",
+        key="add_link"
+    )
+
+    # --------------------------------------------------------------------------
+    # SUBMIT
+    # --------------------------------------------------------------------------
+
+    add_item = st.form_submit_button(
+        "💾 Add Inventory Item",
+        type="primary",
+        use_container_width=True
     )
 
 
-with add_col2:
-
-    add_category = st.selectbox(
-        "Category",
-        options=CATEGORY_OPTIONS,
-        key="add_category"
-    )
-
-
-with add_col3:
-
-    add_proj = st.text_input(
-        "Project / Part No.",
-        key="add_project"
-    )
-
-
 # ==============================================================================
-# ADD ITEM - ROW 2
+# PROCESS ADD ITEM
 # ==============================================================================
 
-add_col4, add_col5, add_col6 = st.columns(3)
-
-
-with add_col4:
-
-    add_stock = st.number_input(
-        "Stock",
-        min_value=0,
-        value=0,
-        step=1,
-        key="add_stock"
-    )
-
-
-with add_col5:
-
-    add_loc = st.text_input(
-        "Location",
-        key="add_location"
-    )
-
-
-with add_col6:
-
-    add_rem = st.text_input(
-        "Remarks",
-        key="add_remarks"
-    )
-
-
-# Procurement link
-add_link = st.text_input(
-    "Procurement Link",
-    key="add_link"
-)
-
-
-# ==============================================================================
-# ADD ITEM BUTTON
-# ==============================================================================
-
-if st.button(
-    "💾 Add Inventory Item",
-    type="primary",
-    use_container_width=True
-):
+if add_item:
 
     if not add_eq.strip():
 
@@ -999,20 +998,16 @@ if st.button(
         ):
 
             if save_to_github(updated_df):
+
                 st.session_state.inventory_df = updated_df
-                st.session_state["add_equipment"] = ""
-                st.session_state["add_category"] = CATEGORY_OPTIONS[0]
-                st.session_state["add_project"] = ""
-                st.session_state["add_stock"] = 0
-                st.session_state["add_location"] = ""
-                st.session_state["add_remarks"] = ""
-                st.session_state["add_link"] = ""
 
                 st.success(
                     "✅ New inventory item added successfully!"
-                    )
-                st.rerun()
+                )
 
+                # Rerun without manually modifying widget session state.
+                # clear_on_submit=True will reset the form fields.
+                st.rerun()
 # ==============================================================================
 # REMOVE INVENTORY ITEM
 # ==============================================================================
